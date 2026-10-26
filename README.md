@@ -1,0 +1,126 @@
+# AR Remote
+
+Turns the Astrion HA100 touch remote into a Control4 Halo Touch–style handheld,
+programmed entirely from Home Assistant.
+
+- **The app** (`android/`) — a launcher APK for the remote. Pick a room, pick an
+  activity, and the hard buttons instantly retarget: D-pad and OK go to the Apple
+  TV, volume goes to the amp, colour keys run whatever you assigned. Lights,
+  comfort, shades and favourites are one tap away.
+- **The integration** (`custom_components/ar_remote`) — the "Composer". Build
+  rooms, activities and button assignments in the HA UI, press **Program remote**,
+  and it pushes everything to the remote. It also pushes app updates to it.
+
+## Install
+
+1. **HACS** → Integrations → ⋮ → Custom repositories → `marsh4200/ar_remote`
+   (category *Integration*). Install **AR Remote**, restart Home Assistant.
+2. **First install of the app — over USB, once.** On the remote turn on USB
+   debugging, plug it into a PC and run `tools/install-usb.bat` (Windows) or
+   `tools/install-usb.sh` (Mac/Linux). Accept *Allow USB debugging* on the
+   remote. The script fetches adb if you don't have it, installs the latest
+   release, makes AR Remote the home screen, grants it permission to install its
+   own updates, and prints the remote's IP.
+3. **Settings → Devices & services → Add integration → AR Remote**, enter that IP.
+   The remote links within a few seconds.
+4. **Configure** the integration to open the Composer.
+
+### Updates — no ADB, no cable
+
+Press **Install / update app** in HA. The app downloads the new release itself
+and Android shows its install dialog on the remote — tap **Install**. (If the
+remote ever does have network ADB on, the same button installs over ADB
+instead when the app isn't running.)
+
+## Composer
+
+| Step | What you set |
+| --- | --- |
+| **Add a room** | lights and switches (relays), lighting scenes, climate, shades, favourites, temperature sensor, optional Room Off action |
+| **Add an activity** | Watch or Listen · logo · source media player (+ input or app) · volume device (+ input) · navigation remote + command set · **Also turn on**: any number of extra devices (projector, amp, screen, power switches) · optional start action |
+| **Inputs** | dropdowns of the inputs the source, the amp and each extra media player actually report — leave one empty and that device just switches on |
+| **What else it does** | HA action editor for start and end: other devices + sources, lights (dim/colour), switches, delays between steps |
+| **Buttons** | 3 on-screen custom buttons and the red/green/blue/yellow keys — label + script/scene/button |
+| **Copy an activity** | duplicates an activity (devices, inputs, steps, buttons) — set up Netflix once, copy it to Prime and change the name, logo and app |
+| **Remote settings** | your logo (start-up splash and charging screen), charging screen on/off, wake on pick-up (off / auto / always) and its sensitivity |
+| **Save and program** | pushes the project to the remote |
+
+Starting an activity powers on its source, amp and every **Also turn on** device, selects inputs, runs the start
+action, and turns off anything the previous activity used that this one doesn't.
+**Room Off** (or the remote's power key) pauses the music, turns off every source
+and amp in the room, every **Also turn on** device and everything the activity's start steps turned on, runs the
+activity's end steps, then your optional room off action.
+
+### Command sets
+
+The navigation remote gets `remote.send_command` with the names the platform
+expects: `apple_tv`, `android_tv`, `roku`, `samsung_tv`, `lg_webos`,
+`ir_generic` (Broadlink / IR learned codes named `up`, `down`, `ok`, `back` …).
+Transport keys fall back to the source media player when the set has no command.
+
+## Button routing
+
+| Key | Home / lights / other screens | Activity screen |
+| --- | --- | --- |
+| D-pad, OK | moves the on-screen focus | navigation remote |
+| BACK | previous screen | back / menu command |
+| HOME | room home screen | room home screen |
+| POWER | Room Off | Room Off |
+| Volume, mute | the room's amp while an activity runs | the room's amp |
+| ⏪ ⏵ ⏹ ⏩ | the source while an activity runs | the source |
+| Colour keys | the activity's colour actions | the activity's colour actions |
+| Left / Right on a light | dims ±10% | — |
+
+Every press is also reported to HA — as the `ar_remote_button` event and the
+**Buttons** event entity (`<key>_short` / `<key>_long`) — so any key can drive an
+automation, including ones nothing is mapped to.
+
+## Entities
+
+- `select.<remote>_<room>_activity` — per room, `Off` or an activity (start/stop from HA too)
+- `event.<remote>_buttons`
+- `sensor.<remote>_battery`, `sensor.<remote>_app_version`, `binary_sensor.<remote>_online`
+- `button.<remote>_program_remote`, `button.<remote>_install_update_app`
+
+Services: `ar_remote.program`, `ar_remote.install_app`, `ar_remote.start_activity`, `ar_remote.room_off`.
+
+## Building the APK
+
+GitHub Actions builds `ar-remote.apk` on every push (artifact) and attaches it to
+the release when you push a `v*` tag — that release asset is what
+**Install / update app** downloads.
+
+Signing: the bundled `android/app/ar-remote.jks` (password `arremote`) keeps
+every build update-compatible. To use your own key, add the secrets
+`AR_KEYSTORE_B64`, `AR_KEYSTORE_PASSWORD`, `AR_KEY_ALIAS`, `AR_KEY_PASSWORD` —
+then uninstall the old build once, since Android won't update across keys.
+
+Local build: `cd android && gradle assembleRelease` (Android SDK required).
+
+## Protocol
+
+[`docs/PROTOCOL.md`](docs/PROTOCOL.md) — the remote's HTTP API, webhook messages,
+project and state format, and the HA100 keycode table.
+
+### The remote itself
+
+- **Your logo.** Copy it to `/config/www/logo.png` and enter `/local/logo.png` under
+  **Remote settings** (leave it empty and the built-in A&R Smart Home logo is used). The remote keeps a copy and shows it for a moment every time the
+  app starts, including straight after a reboot. (Android's own boot animation that plays
+  before the app can't be replaced without rooting the remote.)
+- **Charging screen.** Put the remote on charge and the screen wakes to an animated ring
+  that fills to the battery level. Any key or a tap clears it.
+- **Wake on pick-up.** With the screen off, lifting the remote (or taking it off the
+  charger) turns the screen on. *Auto* works on any remote (it keeps the motion sensor
+  running while the screen is off); *Battery saver* only uses low-power sensors. The
+  **Pick-up sensor** entity shows what is in use and which motion sensors the remote has.
+- **Watch / Listen picker.** One activity of a kind starts straight away. Two or more
+  (Netflix, Prime, DStv …) show a "What do you want to watch?" screen of logo tiles.
+  Give each activity a logo: **Upload a logo** in the activity's form picks an image
+  from your computer (saved to `/config/ar_remote_media`), or type an address like
+  `/local/netflix.png`.
+- **Rooms is the main page.** The app opens on it, and Home and Room Off go back to it
+  (a single-room house opens straight into the room).
+- **Lights.** Dimmable lights have a slider you can drag with a finger (Left / Right
+  on the D-pad still dims in steps). Switches and relays are on / off.
+

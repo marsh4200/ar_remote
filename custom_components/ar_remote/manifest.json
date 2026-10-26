@@ -1,0 +1,13 @@
+{
+  "domain": "ar_remote",
+  "name": "AR Remote",
+  "codeowners": ["@marsh4200"],
+  "config_flow": true,
+  "dependencies": ["file_upload", "http", "webhook"],
+  "documentation": "https://github.com/marsh4200/ar_remote",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/marsh4200/ar_remote/issues",
+  "requirements": ["adb-shell[async]>=0.4.4"],
+  "version": "2.3.2"
+}

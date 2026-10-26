@@ -1,0 +1,314 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add an AR Remote",
+        "description": "Enter the Astrion's IP address. Install the app first with tools/install-usb (USB, one time) — it prints the IP. Later updates come from the **Install / update app** button.",
+        "data": {
+          "host": "Remote IP address",
+          "port": "App port",
+          "adb_port": "ADB port"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This remote is already added."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "AR Remote Composer",
+        "description": "{summary}\n\nChanges are kept here until you choose **Save and program the remote**.",
+        "menu_options": {
+          "add_room": "Add a room",
+          "pick_room": "Edit a room",
+          "add_activity": "Add an activity (Watch / Listen)",
+          "pick_activity": "Edit an activity and its buttons",
+          "copy_activity": "Copy an activity (e.g. Netflix → Prime)",
+          "pick_delete": "Delete a room or activity",
+          "remote_settings": "Remote settings (logo, charging, wake on pick-up)",
+          "save": "Save and program the remote"
+        }
+      },
+      "add_room": {
+        "title": "Add a room",
+        "data": {
+          "name": "Room name",
+          "lights": "Lights and switches (relays)",
+          "scenes": "Lighting scenes",
+          "climate": "Climate",
+          "covers": "Shades / blinds",
+          "favourites": "Favourites",
+          "temperature": "Temperature sensor (shown in the header)",
+          "off_action": "Room Off action (optional)"
+        },
+        "data_description": {
+          "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity's start steps turned on.",
+          "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off."
+        }
+      },
+      "pick_room": {
+        "title": "Edit a room",
+        "data": {
+          "room": "Room"
+        }
+      },
+      "edit_room": {
+        "title": "Edit {room}",
+        "data": {
+          "name": "Room name",
+          "lights": "Lights and switches (relays)",
+          "scenes": "Lighting scenes",
+          "climate": "Climate",
+          "covers": "Shades / blinds",
+          "favourites": "Favourites",
+          "temperature": "Temperature sensor (shown in the header)",
+          "off_action": "Room Off action (optional)"
+        }
+      },
+      "add_activity": {
+        "title": "Add an activity",
+        "description": "An activity is what the room is doing — like Watch Apple TV. While it runs, the remote's hard buttons drive these devices.",
+        "data": {
+          "room": "Room",
+          "name": "Activity name",
+          "kind": "Type",
+          "logo_upload": "Upload a logo",
+          "logo": "…or an image address",
+          "source": "Source (media player)",
+          "volume": "Volume device (amp / soundbar / TV)",
+          "dpad": "Navigation remote (D-pad, OK, back)",
+          "command_set": "Navigation command set",
+          "devices": "Also turn on (projector, amp, screen …)",
+          "power_on": "Extra action when the activity starts (optional)"
+        },
+        "data_description": {
+          "volume": "Volume, mute and the volume rocker go here. Leave empty to use the source.",
+          "dpad": "A remote entity — Apple TV, Android TV, Roku, Samsung, LG or a Broadlink/IR remote.",
+          "command_set": "Which command names the navigation remote understands.",
+          "devices": "Projector, amplifier, screen, power switches … They switch on when the activity starts and go off at Room Off (or when the next activity doesn't use them). Media players can also be sent to an input on the next page — leave it empty to just switch on.",
+          "power_on": "A script or scene to run as well. For lights, delays and more, use the next pages.",
+          "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
+          "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
+        }
+      },
+      "edit_activity": {
+        "title": "Edit {activity}",
+        "data": {
+          "name": "Activity name",
+          "kind": "Type",
+          "logo_upload": "Upload a logo",
+          "logo": "…or an image address",
+          "source": "Source (media player)",
+          "volume": "Volume device (amp / soundbar / TV)",
+          "dpad": "Navigation remote (D-pad, OK, back)",
+          "command_set": "Navigation command set",
+          "devices": "Also turn on (projector, amp, screen …)",
+          "power_on": "Extra action when the activity starts (optional)"
+        },
+        "data_description": {
+          "devices": "Projector, amplifier, screen, power switches … They switch on when the activity starts and go off at Room Off (or when the next activity doesn't use them). Media players can also be sent to an input on the next page — leave it empty to just switch on.",
+          "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
+          "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
+        }
+      },
+      "pick_activity": {
+        "title": "Edit an activity",
+        "data": {
+          "activity": "Activity"
+        }
+      },
+      "buttons": {
+        "title": "Buttons for {activity}",
+        "description": "The three custom buttons appear on screen. The colour keys are the red, green, blue and yellow hard buttons; their labels show on screen too.",
+        "data": {
+          "custom1_label": "Custom 1 label",
+          "custom1_action": "Custom 1 action",
+          "custom2_label": "Custom 2 label",
+          "custom2_action": "Custom 2 action",
+          "custom3_label": "Custom 3 label",
+          "custom3_action": "Custom 3 action",
+          "red_label": "Red key label",
+          "red_action": "Red key action",
+          "green_label": "Green key label",
+          "green_action": "Green key action",
+          "blue_label": "Blue key label",
+          "blue_action": "Blue key action",
+          "yellow_label": "Yellow key label",
+          "yellow_action": "Yellow key action"
+        }
+      },
+      "pick_delete": {
+        "title": "Delete",
+        "data": {
+          "item": "Room or activity to delete"
+        }
+      },
+      "sources": {
+        "title": "Inputs for {activity}",
+        "description": "Pick the input each device switches to when the activity starts. The lists come from the devices themselves. Leave an input empty and that device just switches on.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}",
+        "data": {
+          "source_input": "Input on the source",
+          "input": "Input on the volume device"
+        }
+      },
+      "actions": {
+        "title": "What else {activity} does",
+        "description": "Optional. Build it like an HA script: switch other devices on and to a source, dim or colour lights, turn switches on or off, add delays between steps (e.g. wait 2 s). Leave empty and nothing extra happens.",
+        "data": {
+          "start_actions": "When the activity starts",
+          "stop_actions": "When the activity ends (switching away or Room Off)",
+          "turn_off_on_end": "Turn off everything the start steps turned on when the activity ends"
+        },
+        "data_description": {
+          "turn_off_on_end": "Lights, switches and players used in the start steps go off at Room Off or when you switch to an activity that doesn't use them. Music is paused first."
+        }
+      },
+      "remote_settings": {
+        "title": "Remote settings",
+        "description": "How the remote itself behaves.",
+        "data": {
+          "logo_upload": "Upload a logo",
+          "logo": "…or an image address",
+          "splash_seconds": "Show the logo at start-up for",
+          "charging_screen": "Show the charging screen when the remote is put on charge",
+          "pickup": "Wake the screen when the remote is picked up",
+          "pickup_sensitivity": "Pick-up sensitivity"
+        },
+        "data_description": {
+          "logo": "e.g. `/local/logo.png`. Clear it (and don't upload) for the built-in A&R Smart Home logo.",
+          "splash_seconds": "0 turns the start-up logo off. Note: Android's own boot animation before the app starts can't be changed without rooting the remote.",
+          "pickup": "Auto works on any remote: it keeps the motion sensor running while the screen is off (uses some battery). Battery saver only uses low-power sensors, which many remotes don't have. Lifting it off the charger always wakes it. The **Pick-up sensor** entity shows what the remote is using.",
+          "pickup_sensitivity": "High wakes on a gentle lift; Low needs a firmer pick-up (fewer accidental wakes from bumps).",
+          "logo_upload": "Pick an image from your computer or phone. A PNG with a transparent background looks best on the dark screen. Leave empty to keep the current logo."
+        }
+      },
+      "copy_activity": {
+        "title": "Copy an activity",
+        "description": "Makes a copy with the same devices, inputs, start/end steps and buttons. Next you can change what's different, like the name, logo and the app on the source.",
+        "data": {
+          "activity": "Activity to copy",
+          "name": "Name of the copy",
+          "room": "Room (leave empty for the same room)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "kind": {
+      "options": {
+        "watch": "Watch",
+        "listen": "Listen"
+      }
+    },
+    "pickup": {
+      "options": {
+        "auto": "Auto (works on any remote)",
+        "saver": "Battery saver (low-power sensors only)",
+        "off": "Off"
+      }
+    },
+    "pickup_sensitivity": {
+      "options": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      }
+    },
+    "button": {
+      "program": {
+        "name": "Program remote"
+      },
+      "install_app": {
+        "name": "Install / update app"
+      }
+    },
+    "event": {
+      "button": {
+        "name": "Buttons"
+      }
+    },
+    "select": {
+      "room_activity": {
+        "name": "{room} activity"
+      }
+    },
+    "sensor": {
+      "battery": {
+        "name": "Battery"
+      },
+      "app_version": {
+        "name": "App version"
+      },
+      "wake_sensor": {
+        "name": "Pick-up sensor"
+      }
+    }
+  },
+  "services": {
+    "program": {
+      "name": "Program remote",
+      "description": "Push the rooms, activities and buttons to the remote.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Remote",
+          "description": "Leave empty for every AR Remote."
+        }
+      }
+    },
+    "install_app": {
+      "name": "Install / update app",
+      "description": "Update the AR Remote app: the app downloads the release and asks for Install on the remote's screen. Falls back to network ADB when the app isn't running.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Remote",
+          "description": "Leave empty for every AR Remote."
+        },
+        "apk_url": {
+          "name": "APK URL",
+          "description": "Install a specific build instead of the latest release."
+        }
+      }
+    },
+    "start_activity": {
+      "name": "Start activity",
+      "description": "Start an activity in a room, as if chosen on the remote.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Remote",
+          "description": "Leave empty for every AR Remote."
+        },
+        "room": {
+          "name": "Room ID",
+          "description": "The room's id (its name in lower case with underscores)."
+        },
+        "activity": {
+          "name": "Activity ID",
+          "description": "The activity's id."
+        }
+      }
+    },
+    "room_off": {
+      "name": "Room off",
+      "description": "Turn the room off.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Remote",
+          "description": "Leave empty for every AR Remote."
+        },
+        "room": {
+          "name": "Room ID",
+          "description": "The room's id."
+        }
+      }
+    }
+  }
+}

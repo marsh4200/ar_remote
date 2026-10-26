@@ -1,0 +1,2 @@
+pytest-homeassistant-custom-component
+adb-shell[async]==0.4.4

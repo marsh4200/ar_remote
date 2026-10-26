@@ -1,0 +1,46 @@
+program:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: ar_remote
+
+install_app:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: ar_remote
+    apk_url:
+      example: "https://github.com/marsh4200/ar_remote/releases/latest/download/ar-remote.apk"
+      selector:
+        text:
+
+start_activity:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: ar_remote
+    room:
+      required: true
+      example: living_room
+      selector:
+        text:
+    activity:
+      required: true
+      example: apple_tv
+      selector:
+        text:
+
+room_off:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: ar_remote
+    room:
+      required: true
+      example: living_room
+      selector:
+        text:
