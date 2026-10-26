@@ -10,7 +10,7 @@ val keystorePass = System.getenv("AR_KEYSTORE_PASSWORD") ?: "arremote"
 val keyAliasName = System.getenv("AR_KEY_ALIAS") ?: "arremote"
 val keyPass = System.getenv("AR_KEY_PASSWORD") ?: "arremote"
 
-val appVersionName = System.getenv("AR_VERSION_NAME") ?: "2.3.2"
+val appVersionName = System.getenv("AR_VERSION_NAME") ?: "2.3.3"
 val appVersionCode = (System.getenv("AR_VERSION_CODE") ?: "1").toInt()
 
 android {

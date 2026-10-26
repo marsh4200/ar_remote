@@ -125,6 +125,7 @@ class ActivityScreen(host: Host, private val activityId: String) : Screen(host) 
             clickable(focusable = false) { host.send("media", "entity" to act.volume, "action" to "mute") }
         })
         parts += volRow
+        parts += roomOffButton()
 
         return page(*parts.toTypedArray(), scroll = true)
     }
@@ -203,15 +204,19 @@ class ActivityScreen(host: Host, private val activityId: String) : Screen(host) 
         })
         out += volRow
 
-        out += ctx.row(10).apply {
-            gravity = Gravity.CENTER
-            background = ctx.focusBg(Palette.dangerBg, 16)
-            minimumHeight = ctx.dp(56)
-            addView(ctx.icon(R.drawable.ic_power, Palette.danger, 20))
-            addView(ctx.label("Room Off", 17f, Palette.danger, bold = true))
-            clickable(focusable = false) { host.roomOff() }
-        }
+        out += roomOffButton()
         return out
+    }
+
+    /** Ends the room right here (everything off) and goes back to Rooms. */
+    private fun roomOffButton(): View = ctx.row(10).apply {
+        gravity = Gravity.CENTER
+        background = ctx.focusBg(Palette.dangerBg, 16)
+        minimumHeight = ctx.dp(56)
+        addView(ctx.icon(R.drawable.ic_power, Palette.danger, 20))
+        addView(ctx.label("Room Off", 17f, Palette.danger, bold = true))
+        contentDescription = "Room Off"
+        clickable(focusable = false) { host.roomOff() }
     }
 
     private fun bigRound(res: Int, desc: String, onClick: () -> Unit): View =
