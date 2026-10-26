@@ -1,1 +1,87 @@
+name: Build
 
+on:
+  push:
+    branches: [main, dev]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integration:
+    name: Validate integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: brands description topics
+      - uses: home-assistant/actions/hassfest@master
+
+  apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.AR_KEYSTORE_B64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          # The default "tools" package no longer exists in cmdline-tools 16+.
+          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Version from tag
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=0.0.0-dev.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Signing key from secrets (optional)
+        if: env.HAS_KEY == 'true'
+        env:
+          KEYSTORE_B64: ${{ secrets.AR_KEYSTORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "AR_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          echo "AR_KEYSTORE_PASSWORD=${{ secrets.AR_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "AR_KEY_ALIAS=${{ secrets.AR_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "AR_KEY_PASSWORD=${{ secrets.AR_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+
+      - name: Assemble
+        working-directory: android
+        env:
+          AR_VERSION_NAME: ${{ steps.ver.outputs.name }}
+          AR_VERSION_CODE: ${{ github.run_number }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: Rename
+        run: cp android/app/build/outputs/apk/release/app-release.apk ar-remote.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ar-remote-apk
+          path: ar-remote.apk
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ar-remote.apk
+          generate_release_notes: true
