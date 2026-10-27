@@ -135,6 +135,8 @@ class ClockView(
     companion object {
         /** Dial of the built-in A&R Smart Home logo (circle around the house). */
         val BUILT_IN_DIAL = floatArrayOf(0.504f, 0.371f, 0.422f)
+        /** Width / height of the A&R logo (921 × 1049). */
+        const val BUILT_IN_ASPECT = 0.878f
         /** Your own logo: hands in the middle. */
         val CENTRE_DIAL = floatArrayOf(0.5f, 0.5f, 0.42f)
     }

@@ -264,6 +264,9 @@ class ArRemoteComposer(OptionsFlow):
                 dev["pin_hash"] = pin_hash(pin)
             dev["clock"] = user_input.get("clock", "charging")
             dev["clock_after"] = int(user_input.get("clock_after", 30))
+            # Clock hands centre: both empty = automatic.
+            cx, cy = user_input.get("clock_x"), user_input.get("clock_y")
+            dev["clock_x"], dev["clock_y"] = (float(cx), float(cy)) if cx is not None and cy is not None else (None, None)
             return await self.async_step_init()
         return self.async_show_form(step_id="remote_settings", data_schema=self._remote_settings_schema(dev))
 
@@ -283,6 +286,12 @@ class ArRemoteComposer(OptionsFlow):
                 ),
                 vol.Required("clock_after", default=dev.get("clock_after", 30)): NumberSelector(
                     NumberSelectorConfig(min=10, max=600, step=10, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
+                ),
+                _opt("clock_x", dev): NumberSelector(
+                    NumberSelectorConfig(min=0, max=100, step=0.5, mode=NumberSelectorMode.SLIDER, unit_of_measurement="%")
+                ),
+                _opt("clock_y", dev): NumberSelector(
+                    NumberSelectorConfig(min=0, max=100, step=0.5, mode=NumberSelectorMode.SLIDER, unit_of_measurement="%")
                 ),
                 vol.Required("pickup", default=_pickup(dev.get("pickup"))): _select(
                     ["auto", "saver", "off"], dropdown=False, key="pickup"

@@ -618,8 +618,17 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     }
 
     private fun showClock() {
-        val custom = Logo.isCustom(this)
-        val view = ClockView(this, Logo.bitmap(this), if (custom) ClockView.CENTRE_DIAL else ClockView.BUILT_IN_DIAL)
+        val logo = Logo.bitmap(this)
+        val s = settings
+        val dial = when {
+            // Set by hand in Remote settings (percent of the logo's width / height).
+            s.clockX != null && s.clockY != null -> floatArrayOf(s.clockX / 100f, s.clockY / 100f, ClockView.BUILT_IN_DIAL[2])
+            !Logo.isCustom(this) -> ClockView.BUILT_IN_DIAL
+            // An uploaded copy of the A&R logo (same shape): use its circle, not the middle.
+            logo != null && kotlin.math.abs(logo.width.toFloat() / logo.height - ClockView.BUILT_IN_ASPECT) < 0.03f -> ClockView.BUILT_IN_DIAL
+            else -> ClockView.CENTRE_DIAL
+        }
+        val view = ClockView(this, logo, dial)
         view.alpha = 0f
         showOverlay(view)
         view.animate().alpha(1f).setDuration(600).start()

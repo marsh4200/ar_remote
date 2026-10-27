@@ -101,6 +101,8 @@ def compile_device(hass: HomeAssistant, dev: dict) -> dict:
         "pin_hash": dev.get("pin_hash") or None,
         "clock": dev.get("clock") if dev.get("clock") in ("off", "charging", "always") else "charging",
         "clock_after": max(10, min(600, int(dev.get("clock_after", 30)))),
+        "clock_x": dev.get("clock_x"),
+        "clock_y": dev.get("clock_y"),
     }
 
 

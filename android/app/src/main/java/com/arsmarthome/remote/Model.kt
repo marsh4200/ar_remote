@@ -44,6 +44,8 @@ data class DeviceSettings(
     val clock: String = "charging", // off | charging | always
     val clockAfter: Int = 30, // seconds without a key press
     val pinHash: String? = null, // installer PIN (sha256), set in HA
+    val clockX: Float? = null, // clock hands centre, % across the logo (null = automatic)
+    val clockY: Float? = null, // % down the logo
 ) {
     companion object {
         fun parse(d: JSONObject?): DeviceSettings {
@@ -57,6 +59,8 @@ data class DeviceSettings(
                 clock = d.optString("clock", "charging"),
                 clockAfter = d.optInt("clock_after", 30).coerceIn(10, 600),
                 pinHash = d.optStr("pin_hash"),
+                clockX = if (d.isNull("clock_x") || !d.has("clock_x")) null else d.optDouble("clock_x").toFloat(),
+                clockY = if (d.isNull("clock_y") || !d.has("clock_y")) null else d.optDouble("clock_y").toFloat(),
             )
         }
     }

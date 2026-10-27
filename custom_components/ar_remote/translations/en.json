@@ -177,6 +177,8 @@
           "charging_screen": "Show the charging screen when the remote is put on charge",
           "clock": "Logo clock screensaver",
           "clock_after": "Show the clock after (no key pressed)",
+          "clock_x": "Clock centre — across the logo",
+          "clock_y": "Clock centre — down the logo",
           "pickup": "Wake the screen when the remote is picked up",
           "pickup_sensitivity": "Pick-up sensitivity"
         },
@@ -187,7 +189,8 @@
           "pickup_sensitivity": "High wakes on a gentle lift; Low needs a firmer pick-up (fewer accidental wakes from bumps).",
           "logo_upload": "Pick an image from your computer or phone. A PNG with a transparent background looks best on the dark screen. Leave empty to keep the current logo.",
           "clock": "Your logo as a clock face. On the charger, the screen stays on and the clock appears instead of going dark; any key or tap goes back. Always also shows it off the charger (keeps the screen on — uses a lot of battery).",
-          "installer_pin": "Protects **Installer settings** on the remote's pull-down panel (Android settings, restart, updates). Leave empty to keep the current PIN. Only a hash is stored."
+          "installer_pin": "Protects **Installer settings** on the remote's pull-down panel (Android settings, restart, updates). Leave empty to keep the current PIN. Only a hash is stored.",
+          "clock_x": "Leave both empty for automatic (the A&R logo's circle, or the middle of another logo). For the A&R logo the circle is at 50.4 % across, 37.1 % down."
         }
       },
       "copy_activity": {
