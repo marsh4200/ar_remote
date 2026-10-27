@@ -42,6 +42,13 @@ echo "  screensaver / clock off"
 dumpsys deviceidle whitelist +"$PKG" >/dev/null 2>&1
 appops set "$PKG" SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
 appops set "$PKG" REQUEST_INSTALL_PACKAGES allow >/dev/null 2>&1
+# Settings panel: Wi-Fi list needs location, screen timeout needs WRITE_SETTINGS.
+pm grant "$PKG" android.permission.ACCESS_FINE_LOCATION >/dev/null 2>&1
+pm grant "$PKG" android.permission.ACCESS_COARSE_LOCATION >/dev/null 2>&1
+appops set "$PKG" WRITE_SETTINGS allow >/dev/null 2>&1
+settings put secure location_mode 3 >/dev/null 2>&1
+cmd location set-location-enabled true >/dev/null 2>&1
+echo "  settings panel allowed (Wi-Fi list, screen timeout)"
 am start -n "$PKG/.MainActivity" >/dev/null 2>&1
 sleep 2
 

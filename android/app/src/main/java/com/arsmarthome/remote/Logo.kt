@@ -29,6 +29,12 @@ object Logo {
 
     private var builtIn: Bitmap? = null
 
+    /** True when a logo from Home Assistant is in use (not the built-in one). */
+    fun isCustom(ctx: Context): Boolean {
+        bitmap(ctx)
+        return cached != null
+    }
+
     /** The logo set in Home Assistant, or the built-in A&R Smart Home logo. */
     fun bitmap(ctx: Context): Bitmap? {
         if (!loaded) {

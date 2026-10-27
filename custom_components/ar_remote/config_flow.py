@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import os
 import shutil
 import time
@@ -30,6 +31,8 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
     TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 from homeassistant.util import slugify
 
@@ -86,6 +89,11 @@ def _pickup(value: str | None) -> str:
 def _devices(act: dict) -> list[dict]:
     """The activity's 'Also turn on' list: [{"entity": ..., "source": ... | None}]."""
     return [d for d in act.get("devices") or [] if isinstance(d, dict) and d.get("entity")]
+
+
+def pin_hash(pin: str) -> str:
+    """What the remote checks: sha256("ar_remote:" + PIN). The PIN itself isn't stored."""
+    return hashlib.sha256(f"ar_remote:{pin}".encode()).hexdigest()
 
 
 def _upload() -> FileSelector:
@@ -232,6 +240,13 @@ class ArRemoteComposer(OptionsFlow):
         """Logo, charging screen and wake on pick-up."""
         dev = self.project.setdefault("device", {})
         if user_input is not None:
+            pin = "".join(ch for ch in str(user_input.get("installer_pin") or "") if ch.isdigit())
+            if pin and not user_input.get("clear_pin") and not 4 <= len(pin) <= 8:
+                return self.async_show_form(
+                    step_id="remote_settings",
+                    data_schema=self._remote_settings_schema(dev),
+                    errors={"installer_pin": "pin_length"},
+                )
             if user_input.get("logo_upload"):
                 user_input["logo"] = await self.hass.async_add_executor_job(
                     _save_upload, self.hass, user_input["logo_upload"], "remote_logo"
@@ -243,15 +258,32 @@ class ArRemoteComposer(OptionsFlow):
             dev["charging_screen"] = bool(user_input.get("charging_screen", True))
             dev["pickup"] = user_input.get("pickup", "auto")
             dev["pickup_sensitivity"] = user_input.get("pickup_sensitivity", "normal")
+            if user_input.get("clear_pin"):
+                dev["pin_hash"] = None
+            elif pin:
+                dev["pin_hash"] = pin_hash(pin)
+            dev["clock"] = user_input.get("clock", "charging")
+            dev["clock_after"] = int(user_input.get("clock_after", 30))
             return await self.async_step_init()
-        schema = vol.Schema(
+        return self.async_show_form(step_id="remote_settings", data_schema=self._remote_settings_schema(dev))
+
+    def _remote_settings_schema(self, dev: dict) -> vol.Schema:
+        return vol.Schema(
             {
+                vol.Optional("installer_pin"): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+                vol.Optional("clear_pin", default=False): BooleanSelector(),
                 vol.Optional("logo_upload"): _upload(),
                 _opt("logo", dev): TextSelector(),
                 vol.Required("splash_seconds", default=dev.get("splash_seconds", 2)): NumberSelector(
                     NumberSelectorConfig(min=0, max=10, step=1, mode=NumberSelectorMode.SLIDER, unit_of_measurement="s")
                 ),
                 vol.Required("charging_screen", default=dev.get("charging_screen", True)): BooleanSelector(),
+                vol.Required("clock", default=dev.get("clock", "charging")): _select(
+                    ["charging", "always", "off"], dropdown=False, key="clock"
+                ),
+                vol.Required("clock_after", default=dev.get("clock_after", 30)): NumberSelector(
+                    NumberSelectorConfig(min=10, max=600, step=10, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
+                ),
                 vol.Required("pickup", default=_pickup(dev.get("pickup"))): _select(
                     ["auto", "saver", "off"], dropdown=False, key="pickup"
                 ),
@@ -260,7 +292,6 @@ class ArRemoteComposer(OptionsFlow):
                 ),
             }
         )
-        return self.async_show_form(step_id="remote_settings", data_schema=schema)
 
     # ------------------------------------------------------------------- rooms
 

@@ -26,7 +26,10 @@ import java.net.NetworkInterface
 
 class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
-    private lateinit var store: Store
+    lateinit var store: Store
+        private set
+    lateinit var wifi: Wifi
+        private set
     private lateinit var link: HaLink
     private lateinit var server: ConfigServer
     private lateinit var updater: Updater
@@ -46,6 +49,8 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     private var battery = -1
     private var charging = false
+    val batteryLevel: Int get() = battery
+    val isCharging: Boolean get() = charging
 
     // ------------------------------------------------------------- lifecycle
 
@@ -69,6 +74,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         setContentView(root)
 
         store = Store(this)
+        wifi = Wifi(this)
         @SuppressLint("HardwareIds")
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "astrion"
         link = HaLink(store, androidId)
@@ -87,6 +93,8 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         applyDeviceSettings()
         waker.start()
         askDozeExemption()
+        lastInput = SystemClock.uptimeMillis()
+        main.postDelayed(idleWatch, 5000)
         updater = Updater(this) { status ->
             main.post {
                 Toast.makeText(this, status, Toast.LENGTH_LONG).show()
@@ -100,6 +108,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     override fun onResume() {
         super.onResume()
+        applyBrightness()
         dismissLockScreen()
         hello()
     }
@@ -138,6 +147,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
         try { unregisterReceiver(powerReceiver) } catch (_: Exception) {}
         waker.stop()
+        main.removeCallbacks(idleWatch)
         updater.unregister()
         server.stop()
         super.onDestroy()
@@ -235,15 +245,186 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     /** Last touch or key press: state pushes don't rebuild the screen under your finger. */
     private var lastInput = 0L
 
+    private var edgeStartY = -1f
+    private var edgeFromTop = false
+    private var swallowGesture = false
+
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
         lastInput = SystemClock.uptimeMillis()
+        when (ev.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                swallowGesture = false
+                val h = root.height.toFloat()
+                edgeStartY = -1f
+                if (overlay == null && ev.y < dp(28)) { edgeStartY = ev.y; edgeFromTop = true }
+                else if (overlay == null && screen is PanelScreen && h > 0 && ev.y > h - dp(36)) { edgeStartY = ev.y; edgeFromTop = false }
+            }
+            android.view.MotionEvent.ACTION_MOVE -> if (edgeStartY >= 0 && !swallowGesture) {
+                val dy = ev.y - edgeStartY
+                if ((edgeFromTop && dy > dp(70)) || (!edgeFromTop && dy < -dp(70))) {
+                    swallowGesture = true
+                    // Cancel whatever the finger was pressing, then open / close the panel.
+                    val cancel = android.view.MotionEvent.obtain(ev).apply { action = android.view.MotionEvent.ACTION_CANCEL }
+                    super.dispatchTouchEvent(cancel)
+                    cancel.recycle()
+                    if (edgeFromTop) openSettings() else closeSettings()
+                }
+            }
+        }
+        if (swallowGesture) {
+            if (ev.actionMasked == android.view.MotionEvent.ACTION_UP || ev.actionMasked == android.view.MotionEvent.ACTION_CANCEL) {
+                swallowGesture = false
+                edgeStartY = -1f
+            }
+            return true
+        }
         return super.dispatchTouchEvent(ev)
+    }
+
+    // --------------------------------------------------------- settings panel
+
+    /** Pull the settings panel down over whatever is on screen. */
+    fun openSettings() {
+        if (screen is PanelScreen) return
+        show(SettingsScreen(this, screen))
+        stage.getChildAt(0)?.let { v ->
+            v.translationY = -root.height.toFloat()
+            v.animate().translationY(0f).setDuration(320)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f)).start()
+        }
+    }
+
+    fun closeSettings() {
+        val s = screen as? PanelScreen ?: return
+        val target = s.parent.invoke()
+        val v = stage.getChildAt(0)
+        if (v == null) { show(target); return }
+        v.animate().translationY(-root.height.toFloat()).setDuration(240)
+            .withEndAction { show(target) }.start()
+    }
+
+    fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+
+    fun versionName(): String = appVersion().first
+
+    fun haConnected(): Boolean = store.webhookUrl != null && link.lastOk
+
+    fun pinHash(): String? = project?.device?.pinHash
+
+    /** The remote's own quick settings (clock / pickup / charging follow HA until changed here). */
+    fun quick(key: String): Boolean = when (key) {
+        "clock" -> settings.clock != "off"
+        "pickup" -> settings.pickup != "off"
+        "charging" -> settings.chargingScreen
+        "night" -> store.flag("night", false)
+        "sounds" -> store.flag("sounds", false)
+        "vibrate" -> store.flag("vibrate", false)
+        else -> false
+    }
+
+    fun setQuick(key: String, on: Boolean) {
+        when (key) {
+            "clock", "pickup", "charging" -> { store.setOverride(key, on); applyDeviceSettings() }
+            else -> store.setFlag(key, on)
+        }
+        if (key == "clock" && !on && overlay is ClockView) hideOverlay()
+        applyBrightness()
+    }
+
+    fun setBrightness(level: Int, final: Boolean) {
+        store.brightness = level
+        applyBrightness()
+    }
+
+    /** Brightness slider, dimmed further at night (22:00–06:00) and under the clock. */
+    private fun applyBrightness() {
+        var b = store.brightness / 100f
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        if (store.flag("night", false) && (hour >= 22 || hour < 6)) b *= 0.4f
+        if (overlay is ClockView) b = minOf(b, 0.25f)
+        b = b.coerceIn(0.02f, 1f)
+        if (window.attributes.screenBrightness == b) return
+        window.attributes = window.attributes.apply { screenBrightness = b }
+    }
+
+    /** Click and / or buzz on each key press (Quick settings). */
+    private fun keyFeedback() {
+        if (store.flag("sounds", false)) {
+            val audio = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+            audio.playSoundEffect(android.media.AudioManager.FX_KEY_CLICK, 0.6f)
+        }
+        if (store.flag("vibrate", false)) {
+            val vib = getSystemService(VIBRATOR_SERVICE) as? android.os.Vibrator
+            try {
+                vib?.vibrate(android.os.VibrationEffect.createOneShot(25, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun canChangeTimeout(): Boolean = Settings.System.canWrite(this)
+
+    fun screenTimeoutSeconds(): Int =
+        Settings.System.getInt(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, 30_000) / 1000
+
+    fun setScreenTimeout(seconds: Int): Boolean {
+        if (!canChangeTimeout()) return false
+        return try {
+            Settings.System.putInt(contentResolver, Settings.System.SCREEN_OFF_TIMEOUT, seconds * 1000)
+        } catch (e: Exception) { false }
+    }
+
+    fun askLocationPermission() {
+        requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), REQ_LOCATION)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_LOCATION) refreshNow()
+    }
+
+    fun hideKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        currentFocus?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
+    }
+
+    /** After joining a network: report back once it's connected (or after ~25 s). */
+    fun watchWifi(ssid: String, done: (Boolean) -> Unit) {
+        var tries = 0
+        val check = object : Runnable {
+            override fun run() {
+                if (wifi.currentSsid() == ssid) { done(true); hello(); return }
+                if (++tries >= 12) { done(false); return }
+                main.postDelayed(this, 2000)
+            }
+        }
+        main.postDelayed(check, 2000)
+    }
+
+    fun openAndroidSettings() {
+        try { startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        catch (e: Exception) { toast("Android settings aren't available") }
+    }
+
+    fun restartApp() {
+        val intent = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val pending = android.app.PendingIntent.getActivity(
+            this, 1, intent, android.app.PendingIntent.FLAG_CANCEL_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
+        val alarm = getSystemService(ALARM_SERVICE) as android.app.AlarmManager
+        alarm.set(android.app.AlarmManager.RTC, System.currentTimeMillis() + 600, pending)
+        finishAffinity()
+        android.os.Process.killProcess(android.os.Process.myPid())
+    }
+
+    fun checkForUpdate() {
+        try { updater.install(APK_URL) } catch (e: Exception) { toast(e.message ?: "Update already running") }
     }
 
     private var seenScrollY = -1
 
     /** Redraw for a state push from HA: waits until you've stopped scrolling / pressing. */
     override fun refresh() {
+        if (screen?.holdsInput == true) return
         if (refreshQueued) return
         refreshQueued = true
         main.postDelayed({ flushRefresh() }, 60)
@@ -264,6 +445,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             return
         }
         refreshQueued = false
+        if (screen?.holdsInput == true) return
         render(keepFocus = true)
     }
 
@@ -300,7 +482,16 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     // -------------------------------------------------------------- overlays
 
-    private val settings: DeviceSettings get() = project?.device ?: DeviceSettings()
+    /** HA's remote settings, with anything changed on the remote's own panel on top. */
+    private val settings: DeviceSettings
+        get() {
+            val base = project?.device ?: DeviceSettings()
+            return base.copy(
+                clock = store.override("clock")?.let { on -> if (!on) "off" else if (base.clock == "off") "charging" else base.clock } ?: base.clock,
+                pickup = store.override("pickup")?.let { on -> if (!on) "off" else if (base.pickup == "off") "auto" else base.pickup } ?: base.pickup,
+                chargingScreen = store.override("charging") ?: base.chargingScreen,
+            )
+        }
 
     /**
      * Android's deep sleep ("Doze") ignores the wake lock pick-up detection needs.
@@ -324,6 +515,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     private fun applyDeviceSettings() {
         val s = settings
         waker.configure(s.pickup, s.pickupSensitivity)
+        updateKeepOn()
         Logo.sync(this, store, s.logo) { if (screen is SetupScreen) refresh() }
     }
 
@@ -337,6 +529,8 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     private fun hideOverlay(fade: Boolean = true) {
         val v = overlay ?: return
         overlay = null
+        lastInput = SystemClock.uptimeMillis() // the clock waits a full idle period again
+        if (v is ClockView) applyBrightness()
         if (!fade) { root.removeView(v); return }
         v.animate().alpha(0f).setDuration(350).withEndAction { root.removeView(v) }.start()
     }
@@ -394,6 +588,44 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         true
     }
 
+    // ------------------------------------------------------------ clock
+
+    /** Clock screensaver wanted right now? (on the charger, or always) */
+    private fun clockWanted(): Boolean = when (settings.clock) {
+        "always" -> true
+        "charging" -> charging
+        else -> false
+    }
+
+    /** On the charger the screen stays on (the clock takes over instead of going dark). */
+    private fun updateKeepOn() {
+        if (clockWanted()) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    private val idleWatch = object : Runnable {
+        override fun run() {
+            val idle = SystemClock.uptimeMillis() - lastInput
+            val o = overlay
+            if (clockWanted() && idle >= settings.clockAfter * 1000L && o !is ClockView && o !is SplashView &&
+                screen !is SetupScreen
+            ) {
+                showClock()
+            }
+            applyBrightness() // night dim starts / ends on its own
+            main.postDelayed(this, 5000)
+        }
+    }
+
+    private fun showClock() {
+        val custom = Logo.isCustom(this)
+        val view = ClockView(this, Logo.bitmap(this), if (custom) ClockView.CENTRE_DIAL else ClockView.BUILT_IN_DIAL)
+        view.alpha = 0f
+        showOverlay(view)
+        view.animate().alpha(1f).setDuration(600).start()
+        applyBrightness() // dims while the clock is up
+    }
+
     private fun showCharging() {
         if (!settings.chargingScreen) return
         (overlay as? ChargingView)?.let { it.update(battery, true); return }
@@ -421,6 +653,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         lastInput = SystemClock.uptimeMillis()
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) keyFeedback()
         val key = Key.from(event.keyCode)
         // A key press only clears the splash / charging screen; it doesn't do anything else.
         if (overlay != null && event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -481,6 +714,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             val start = downAt.remove(key)
             if (start != null && SystemClock.uptimeMillis() - start >= LONG_PRESS_MS) {
                 reportKey(key, event, "long", "ui", s, act)
+                if (key == Key.HOME) openSettings()
             }
             if (consumed.remove(key)) return true
         }
@@ -586,6 +820,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
                 charging = isCharging
                 sendBattery()
                 (overlay as? ChargingView)?.update(pct, isCharging)
+                updateKeepOn()
             }
         }
     }
@@ -601,7 +836,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
                 }
                 Intent.ACTION_POWER_DISCONNECTED -> {
                     // Lifted off the charger: that's a pick-up too.
-                    if (overlay is ChargingView) hideOverlay()
+                    if (overlay is ChargingView || (overlay is ClockView && settings.clock == "charging")) hideOverlay()
                     if (settings.pickup != "off") Waker.wakeScreen(this@MainActivity)
                 }
             }
@@ -614,7 +849,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         link.send(msg)
     }
 
-    private fun appVersion(): Pair<String, Int> = try {
+    fun appVersion(): Pair<String, Int> = try {
         val info = packageManager.getPackageInfo(packageName, 0)
         @Suppress("DEPRECATION")
         (info.versionName ?: "0") to info.versionCode
@@ -622,7 +857,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         "0" to 0
     }
 
-    private fun ipAddress(): String {
+    fun ipAddress(): String {
         try {
             NetworkInterface.getNetworkInterfaces()?.toList()?.forEach { nif ->
                 nif.inetAddresses.toList().forEach { addr ->
@@ -639,6 +874,8 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     companion object {
         const val PORT = 8080
+        const val REQ_LOCATION = 41
+        const val APK_URL = "https://github.com/marsh4200/ar_remote/releases/latest/download/ar-remote.apk"
         const val LONG_PRESS_MS = 800L
     }
 }

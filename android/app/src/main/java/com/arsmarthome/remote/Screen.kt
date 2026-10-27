@@ -37,6 +37,12 @@ abstract class Screen(protected val host: Host) {
     /** Where BACK goes when the screen doesn't route keys to a device. */
     open val parent: (() -> Screen)? = null
 
+    /**
+     * Pages with text entry or live controls (settings panel, Wi-Fi, PIN): state
+     * pushes from HA don't rebuild them (that would wipe what you're typing).
+     */
+    open val holdsInput: Boolean = false
+
     /** True on activity screens: D-pad, BACK, MAIN and transport drive the device. */
     open val routesToDevice: Boolean = false
 

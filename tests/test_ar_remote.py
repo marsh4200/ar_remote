@@ -509,3 +509,27 @@ async def test_switch_in_lights_is_on_off(hass: HomeAssistant, client) -> None:
     await hass.async_block_till_done()
     assert toggle[0].data == {"entity_id": "switch.porch_relay"}
     assert on[0].data == {"entity_id": "switch.porch_relay"}
+
+
+async def test_installer_pin_is_hashed(hass: HomeAssistant, client) -> None:
+    from custom_components.ar_remote.config_flow import pin_hash
+    from custom_components.ar_remote.project import compile_project
+
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={"host": HOST, "port": 8080, "adb_port": 5555, "webhook_id": "w"},
+        options={"project": {"rooms": []}},
+    )
+    entry.add_to_hass(hass)
+    with patch("custom_components.ar_remote.async_setup_entry", return_value=True):
+        flow = await hass.config_entries.options.async_init(entry.entry_id)
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "remote_settings"})
+        bad = await hass.config_entries.options.async_configure(flow["flow_id"], {"installer_pin": "12"})
+        assert bad["errors"] == {"installer_pin": "pin_length"}
+        flow = await hass.config_entries.options.async_configure(bad["flow_id"], {"installer_pin": "2580"})
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "save"})
+    dev = entry.options["project"]["device"]
+    assert "2580" not in str(dev)
+    # Same formula as the app (PinScreen.pinHash): sha256("ar_remote:" + pin)
+    assert dev["pin_hash"] == pin_hash("2580")
+    assert dev["pin_hash"].startswith("fe262987")
+    assert compile_project(hass, entry.options["project"])["device"]["pin_hash"] == pin_hash("2580")

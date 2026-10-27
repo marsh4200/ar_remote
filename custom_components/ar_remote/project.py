@@ -98,6 +98,9 @@ def compile_device(hass: HomeAssistant, dev: dict) -> dict:
         "charging_screen": bool(dev.get("charging_screen", True)),
         "pickup": pickup if pickup in ("off", "auto", "saver") else "auto",
         "pickup_sensitivity": sensitivity if sensitivity in ("low", "normal", "high") else "normal",
+        "pin_hash": dev.get("pin_hash") or None,
+        "clock": dev.get("clock") if dev.get("clock") in ("off", "charging", "always") else "charging",
+        "clock_after": max(10, min(600, int(dev.get("clock_after", 30)))),
     }
 
 

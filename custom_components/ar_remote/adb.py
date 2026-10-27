@@ -82,6 +82,10 @@ async def async_install_app(hass: HomeAssistant, host: str, port: int, apk_url: 
         _LOGGER.debug("set-home-activity: %s", home.strip())
         # Allowed to bring itself back to the front after self-updates (Android 10+).
         await device.shell(f"appops set {APP_ACTIVITY.split('/')[0]} SYSTEM_ALERT_WINDOW allow")
+        # Settings panel: Wi-Fi list (location) and screen timeout (WRITE_SETTINGS).
+        pkg = APP_ACTIVITY.split("/")[0]
+        await device.shell(f"pm grant {pkg} android.permission.ACCESS_FINE_LOCATION")
+        await device.shell(f"appops set {pkg} WRITE_SETTINGS allow")
         # Keep pick-up detection working in deep sleep (Doze).
         await device.shell(f"dumpsys deviceidle whitelist +{APP_ACTIVITY.split('/')[0]}")
         await device.shell(f"am start -n {APP_ACTIVITY}")

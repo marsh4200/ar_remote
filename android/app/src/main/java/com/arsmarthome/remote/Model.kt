@@ -41,6 +41,9 @@ data class DeviceSettings(
     val chargingScreen: Boolean = true,
     val pickup: String = "auto",
     val pickupSensitivity: String = "normal",
+    val clock: String = "charging", // off | charging | always
+    val clockAfter: Int = 30, // seconds without a key press
+    val pinHash: String? = null, // installer PIN (sha256), set in HA
 ) {
     companion object {
         fun parse(d: JSONObject?): DeviceSettings {
@@ -51,6 +54,9 @@ data class DeviceSettings(
                 chargingScreen = d.optBoolean("charging_screen", true),
                 pickup = d.optString("pickup", "auto"),
                 pickupSensitivity = d.optString("pickup_sensitivity", "normal"),
+                clock = d.optString("clock", "charging"),
+                clockAfter = d.optInt("clock_after", 30).coerceIn(10, 600),
+                pinHash = d.optStr("pin_hash"),
             )
         }
     }

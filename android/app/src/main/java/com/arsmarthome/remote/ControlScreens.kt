@@ -291,6 +291,11 @@ class SetupScreen(host: Host, private val address: String) : Screen(host) {
                 14f, Palette.muted,
             ).apply { gravity = Gravity.CENTER },
         )
+        // First start at a client's house: join their Wi-Fi right here.
+        col.addView(ctx.keyButton("Connect to Wi-Fi", active = true) {
+            host.show(WifiScreen(host, this))
+        }.apply { tag = "setup-wifi" }, LinearLayout.LayoutParams(ctx.dp(240), ctx.dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        col.addView(ctx.label("Swipe down from the top for settings", 12f, Palette.muted).apply { gravity = Gravity.CENTER })
         return col
     }
 }

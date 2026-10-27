@@ -108,6 +108,10 @@ project and state format, and the HA100 keycode table.
   **Remote settings** (leave it empty and the built-in A&R Smart Home logo is used). The remote keeps a copy and shows it for a moment every time the
   app starts, including straight after a reboot. (Android's own boot animation that plays
   before the app can't be replaced without rooting the remote.)
+- **Logo clock.** On the charger, after 30 s without a key press (adjustable), the
+  screen shows your logo as a clock face with live hands and the date, dimmed and
+  drifting slightly so nothing burns in. Any key or tap goes back. Set it to
+  *On the charger* (default), *Always* or *Off* under **Remote settings**.
 - **Charging screen.** Put the remote on charge and the screen wakes to an animated ring
   that fills to the battery level. Any key or a tap clears it.
 - **Wake on pick-up.** With the screen off, lifting the remote (or taking it off the
@@ -132,4 +136,22 @@ RosCard for a moment after updates, the stock launcher has been switched back on
 `tools/fix-remote.bat` (Windows) or `tools/fix-remote.sh`. It switches RosCard off,
 makes AR Remote the home screen, turns off the lock screen and clock screensaver,
 and writes `tools/fix-report.txt`. `restore-apps` undoes it.
+
+### Settings on the remote
+
+Swipe down from the top edge of the screen (or long-press Home) for the settings
+panel: brightness, quick toggles (logo clock, wake on lift, charging screen, night
+dim, key sounds, vibrate), screen-off time, **Wi-Fi** (search, pick a network, type
+the password, connect), Home Assistant status and the app version. Swipe up from
+the bottom, press Back or the ⌃ button to close it.
+
+**Installer settings** (Android settings, restart, check for update, pairing
+address) are behind the PIN you set in Home Assistant → AR Remote → Configure →
+**Remote settings**. Only a hash of the PIN is stored.
+
+First start at a new house: the setup screen has a **Connect to Wi-Fi** button, so
+you can join the client's Wi-Fi straight from the remote. On Android 9 and older the
+app joins the network itself; on Android 10+ Android asks you to confirm it.
+Run `tools/fix-remote` once on existing remotes so the Wi-Fi list and screen-off
+time work without extra prompts.
 

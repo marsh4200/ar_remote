@@ -27,6 +27,22 @@ class Store(context: Context) {
         get() = prefs.getBoolean("asked_doze", false)
         set(value) = prefs.edit().putBoolean("asked_doze", value).apply()
 
+    // ---- Choices made on the remote's own settings panel (win over HA's defaults).
+
+    /** null = follow Home Assistant. */
+    fun override(key: String): Boolean? =
+        if (prefs.contains("o_$key")) prefs.getBoolean("o_$key", false) else null
+
+    fun setOverride(key: String, value: Boolean) = prefs.edit().putBoolean("o_$key", value).apply()
+
+    fun flag(key: String, default: Boolean): Boolean = prefs.getBoolean("f_$key", default)
+    fun setFlag(key: String, value: Boolean) = prefs.edit().putBoolean("f_$key", value).apply()
+
+    /** Screen brightness 5..100 (applies to the AR Remote screen). */
+    var brightness: Int
+        get() = prefs.getInt("brightness", 80)
+        set(value) = prefs.edit().putInt("brightness", value.coerceIn(5, 100)).apply()
+
     fun loadProject(): Project? = try {
         if (projectFile.exists()) Project.parse(JSONObject(projectFile.readText())) else null
     } catch (e: Exception) {
