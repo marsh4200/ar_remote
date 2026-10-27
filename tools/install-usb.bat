@@ -63,6 +63,7 @@ echo Making AR Remote the home screen...
 "%ADB%" -d shell cmd package set-home-activity %PKG%/.MainActivity
 echo Letting pick-up detection run while the remote sleeps...
 "%ADB%" -d shell dumpsys deviceidle whitelist +%PKG%
+"%ADB%" -d shell appops set %PKG% SYSTEM_ALERT_WINDOW allow
 "%ADB%" -d shell am start -n %PKG%/.MainActivity
 
 echo.
