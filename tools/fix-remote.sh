@@ -4,8 +4,16 @@
 # the lock screen and the clock screensaver. Writes fix-report.txt.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ADB="$(command -v adb || echo "$HERE/platform-tools/adb")"
-[ -x "$ADB" ] || { echo "adb not found - run install-usb.sh once first (it downloads it)."; exit 1; }
+ADB="$(command -v adb || true)"
+if [ -z "$ADB" ]; then
+  if [ ! -x "$HERE/platform-tools/adb" ]; then
+    case "$(uname -s)" in Darwin) OS=darwin ;; *) OS=linux ;; esac
+    echo "adb not found - downloading Android platform-tools..."
+    curl -L -o "$HERE/platform-tools.zip" "https://dl.google.com/android/repository/platform-tools-latest-$OS.zip" || exit 1
+    unzip -q -o "$HERE/platform-tools.zip" -d "$HERE" && rm "$HERE/platform-tools.zip"
+  fi
+  ADB="$HERE/platform-tools/adb"
+fi
 
 echo "Waiting for the remote on USB (accept the prompt on its screen)..."
 "$ADB" wait-for-usb-device

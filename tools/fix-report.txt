@@ -1,0 +1,23 @@
+=== Before ===
+Home screen app : com.arsmarthome.remote/.MainActivity
+Stock apps running:
+  wmt_launcher
+Lock screen off : true
+Screensaver     : 0
+
+=== Switching off RosCard and the other stock apps ===
+  switched off  com.aiks.HaRemote
+  switched off  com.aiks360.rct
+
+=== Home screen, lock screen, screensaver ===
+  AR Remote is the home screen
+  lock screen off (no swipe to unlock)
+  screensaver / clock off
+
+=== After ===
+Home screen app : com.arsmarthome.remote/.MainActivity
+On screen now   : mResumedActivity: ActivityRecord{e2b5bc1 u0 com.arsmarthome.remote/.MainActivity t45}
+Stock apps running:
+  wmt_launcher
+Lock screen off : true
+Android version : 8.1.0

@@ -1,0 +1,2 @@
+com.aiks.HaRemote
+com.aiks360.rct

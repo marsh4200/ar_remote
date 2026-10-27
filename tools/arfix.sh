@@ -1,7 +1,7 @@
 # Runs ON the remote (pushed by fix-remote.sh / fix-remote.bat). Plain Android sh.
 PKG=com.arsmarthome.remote
 home() { cmd package resolve-activity --brief -c android.intent.category.HOME -a android.intent.action.MAIN 2>/dev/null | tail -n 1; }
-stock() { ps -A 2>/dev/null | grep -i -E 'roscard|astrion|sanytron|launcher' | grep -v arsmarthome | awk '{print $NF}'; }
+stock() { ps -A 2>/dev/null | grep -i -E 'roscard|astrion|sanytron|launcher|aiks|haremote' | grep -v arsmarthome | sed 's/.* //'; }
 
 echo "=== Before ==="
 echo "Home screen app : $(home)"
@@ -11,9 +11,16 @@ echo "Screensaver     : $(settings get secure screensaver_enabled)"
 
 echo
 echo "=== Switching off RosCard and the other stock apps ==="
-for p in $(pm list packages -e -3) $(pm list packages -e | grep -i -E 'launcher|roscard|astrion|sanytron'); do
+done=""
+# Every other app that can be the home screen (whatever it's called, e.g.
+# com.aiks.HaRemote = RosCard), every downloaded app, and anything with a
+# stock-launcher name.
+homes=$(cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | grep '/' | sed 's/ //g' | cut -d/ -f1)
+for p in $homes $(pm list packages -e -3) $(pm list packages -e | grep -i -E 'launcher|roscard|astrion|sanytron|aiks|haremote'); do
   p=${p#package:}
-  case $p in $PKG|*inputmethod*|*keyboard*) continue ;; esac
+  case $p in $PKG|com.android.settings|android|*inputmethod*|*keyboard*) continue ;; esac
+  case " $done " in *" $p "*) continue ;; esac
+  done="$done $p"
   am force-stop "$p"
   if pm disable-user --user 0 "$p" >/dev/null 2>&1; then
     echo "  switched off  $p"; echo "$p" >> /data/local/tmp/ar_disabled.txt

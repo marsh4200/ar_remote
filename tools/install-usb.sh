@@ -51,8 +51,12 @@ echo "Allowing the app to install its own updates..."
 "$ADB" -d shell appops set "$PKG" REQUEST_INSTALL_PACKAGES allow
 
 echo "Switching off the remote's other apps (RosCard, old dashboards, launchers)..."
-"$ADB" -d shell 'for p in $(pm list packages -3) $(pm list packages | grep -i -e launcher -e roscard -e astrion -e sanytron); do p=${p#package:}; case $p in com.arsmarthome.remote|*inputmethod*|*keyboard*) ;; *) am force-stop $p; pm disable-user --user 0 $p >/dev/null 2>&1 && echo $p ;; esac; done' | tr -d '\r' > "$HERE/disabled-apps.txt"
-echo "  Disabled:"; cat "$HERE/disabled-apps.txt"
+"$ADB" -d push "$HERE/arfix.sh" /data/local/tmp/arfix.sh >/dev/null
+"$ADB" -d shell 'rm -f /data/local/tmp/ar_disabled.txt /data/local/tmp/ar_hidden.txt; tr -d "\r" < /data/local/tmp/arfix.sh > /data/local/tmp/arfix2.sh; sh /data/local/tmp/arfix2.sh' | tr -d '\r' > "$HERE/fix-report.txt"
+"$ADB" -d shell 'cat /data/local/tmp/ar_disabled.txt 2>/dev/null' | tr -d '\r' >> "$HERE/disabled-apps.txt"
+"$ADB" -d shell 'cat /data/local/tmp/ar_hidden.txt 2>/dev/null' | tr -d '\r' >> "$HERE/hidden-apps.txt"
+[ -s "$HERE/hidden-apps.txt" ] || rm -f "$HERE/hidden-apps.txt"
+grep -E "switched off|hidden|COULD NOT" "$HERE/fix-report.txt" || echo "  nothing else to switch off"
 echo "  (run ./restore-apps.sh to switch them back on)"
 
 echo "Making AR Remote the home screen..."
