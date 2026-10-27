@@ -41,7 +41,14 @@ echo Waiting for the remote on USB (accept the prompt on its screen)...
 "%ADB%" wait-for-usb-device || goto :fail
 
 echo Installing...
-"%ADB%" -d install -r -g "%APK%" || goto :fail
+"%ADB%" -d install -r -g "%APK%" > "%HERE%install.log" 2>&1
+type "%HERE%install.log"
+findstr /c:"Success" "%HERE%install.log" >nul && goto :installed
+findstr /c:"VERSION_DOWNGRADE" "%HERE%install.log" >nul || goto :fail
+echo The app on the remote is newer than this file - removing it, then installing this one...
+"%ADB%" -d uninstall %PKG%
+"%ADB%" -d install -g "%APK%" || goto :fail
+:installed
 
 echo Allowing the app to install its own updates...
 "%ADB%" -d shell appops set %PKG% REQUEST_INSTALL_PACKAGES allow

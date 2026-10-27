@@ -37,7 +37,15 @@ echo "Waiting for the remote on USB (accept the prompt on its screen)..."
 "$ADB" wait-for-usb-device
 
 echo "Installing..."
-"$ADB" -d install -r -g "$APK"
+OUT="$("$ADB" -d install -r -g "$APK" 2>&1 || true)"
+echo "$OUT"
+if echo "$OUT" | grep -q "VERSION_DOWNGRADE"; then
+  echo "The app on the remote is newer than this file - removing it, then installing this one..."
+  "$ADB" -d uninstall "$PKG" || true
+  "$ADB" -d install -g "$APK"
+elif ! echo "$OUT" | grep -q "Success"; then
+  echo "Install failed."; exit 1
+fi
 
 echo "Allowing the app to install its own updates..."
 "$ADB" -d shell appops set "$PKG" REQUEST_INSTALL_PACKAGES allow
