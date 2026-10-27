@@ -188,8 +188,7 @@
           "logo_upload": "Pick an image from your computer or phone. A PNG with a transparent background looks best on the dark screen. Leave empty to keep the current logo.",
           "clock": "Your logo as a clock face. On the charger, the screen stays on and the clock appears instead of going dark; any key or tap goes back. Always also shows it off the charger (keeps the screen on — uses a lot of battery).",
           "installer_pin": "Protects **Installer settings** on the remote's pull-down panel (Android settings, restart, updates). Leave empty to keep the current PIN. Only a hash is stored."
-        },
-        "error": {}
+        }
       },
       "copy_activity": {
         "title": "Copy an activity",
