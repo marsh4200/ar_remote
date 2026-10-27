@@ -48,6 +48,26 @@ class HomeScreen(host: Host) : Screen(host) {
             parts += nowPlaying(act)
         }
 
+        // Fill the screen: share the height left over (after the header, now-playing
+        // strip and Room Off) between the tile rows. Few tiles = big tiles; lots of
+        // tiles keep the normal size and the page scrolls.
+        val tileCount = listOf(
+            room.activitiesOf("watch").isNotEmpty(),
+            room.activitiesOf("listen").isNotEmpty(),
+            room.lights.isNotEmpty() || room.scenes.isNotEmpty(),
+            room.climate != null,
+            room.covers.isNotEmpty(),
+            room.favourites.isNotEmpty(),
+        ).count { it }
+        val dm = ctx.resources.displayMetrics
+        val screenDp = dm.heightPixels / dm.density
+        val rows = (tileCount + 1) / 2
+        val used = 18 + 16 + 52 + 14 + // page padding + header + gap
+            (if (host.activeActivity() != null) 72 + 14 else 0) + // now-playing strip
+            14 + 64 + 8 // gap + Room Off + a little slack so it never scrolls
+        tileHeightDp = if (rows == 0) 118 else
+            ((screenDp - used - 12 * (rows - 1)) / rows).toInt().coerceIn(118, 260)
+
         // Tiles
         val tiles = mutableListOf<View>()
         val watch = room.activitiesOf("watch")
@@ -85,21 +105,23 @@ class HomeScreen(host: Host) : Screen(host) {
                 host.show(FavouritesScreen(host))
             }
         }
-        parts += grid(tiles, 2, 12, rowHeightDp = 118)
+        parts += grid(tiles, 2, 12, rowHeightDp = tileHeightDp)
 
         // Room off
         val off = ctx.row(10).apply {
             gravity = Gravity.CENTER
             background = ctx.focusBg(Palette.dangerBg, 16)
-            minimumHeight = ctx.dp(54)
-            addView(ctx.icon(R.drawable.ic_power, Palette.danger, 20))
-            addView(ctx.label("Room Off", 17f, Palette.danger, bold = true))
+            minimumHeight = ctx.dp(64)
+            addView(ctx.icon(R.drawable.ic_power, Palette.danger, 22))
+            addView(ctx.label("Room Off", 18f, Palette.danger, bold = true))
             tag = "room-off"
             clickable { host.roomOff() }
         }
         parts += off
         return page(*parts.toTypedArray(), scroll = true)
     }
+
+    private var tileHeightDp = 118
 
     private fun countText(n: Int, word: String) = if (n == 1) "1 $word" else "$n ${word}s"
 
@@ -154,10 +176,12 @@ class HomeScreen(host: Host) : Screen(host) {
             this.tag = tag
             clickable { onClick() }
         }
-        col.addView(ctx.icon(iconRes, Palette.accent, 30))
+        // Bigger tiles get a bigger icon and title.
+        val big = tileHeightDp >= 170
+        col.addView(ctx.icon(iconRes, Palette.accent, if (big) 44 else 30))
         col.addView(View(ctx), LinearLayout.LayoutParams(1, 0, 1f))
-        col.addView(ctx.label(title, 18f, bold = true))
-        col.addView(ctx.label(subtitle, 13f, Palette.muted).apply {
+        col.addView(ctx.label(title, if (big) 22f else 18f, bold = true))
+        col.addView(ctx.label(subtitle, if (big) 15f else 13f, Palette.muted).apply {
             maxLines = 1
             setPadding(0, ctx.dp(4), 0, 0)
         })
