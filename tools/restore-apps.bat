@@ -11,6 +11,10 @@ if not exist "%HERE%disabled-apps.txt" (
 )
 echo Waiting for the remote on USB...
 "%ADB%" wait-for-usb-device
+if exist "%HERE%hidden-apps.txt" (
+  "%ADB%" -d push "%HERE%hidden-apps.txt" /data/local/tmp/hidden-apps.txt >nul
+  "%ADB%" -d shell "for p in $(tr -d '\r' < /data/local/tmp/hidden-apps.txt); do cmd package install-existing $p >/dev/null 2>&1 && echo brought back $p; done; rm /data/local/tmp/hidden-apps.txt"
+)
 "%ADB%" -d push "%HERE%disabled-apps.txt" /data/local/tmp/disabled-apps.txt >nul
 "%ADB%" -d shell "for p in $(tr -d '\r' < /data/local/tmp/disabled-apps.txt); do pm enable $p >/dev/null 2>&1 && echo re-enabled $p; done; rm /data/local/tmp/disabled-apps.txt"
 echo.

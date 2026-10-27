@@ -134,6 +134,7 @@ class ArRemoteRuntime:
             return
         self.info = info
         self.online = True
+        self._check_launchers(info)
         if info.get("battery") is not None:
             self.battery = info["battery"]
             self.charging = info.get("charging")
@@ -146,6 +147,26 @@ class ArRemoteRuntime:
         except RemoteError as err:
             _LOGGER.debug("Sync with %s failed: %s", self.client.host, err)
         async_dispatcher_send(self.hass, self.signal)
+
+    @callback
+    def _check_launchers(self, info: dict) -> None:
+        """Warn in HA when the stock launcher (RosCard) is switched on again."""
+        from homeassistant.components import persistent_notification
+
+        others = info.get("other_launchers") or []
+        note_id = f"{DOMAIN}_launcher_{self.entry.entry_id}"
+        if others:
+            persistent_notification.async_create(
+                self.hass,
+                f"The remote at {self.client.host} has another home-screen app switched on "
+                f"again: **{', '.join(others)}**. That brings back the clock lock screen and "
+                "shows it first after updates. Plug the remote in over USB and run "
+                "**tools/fix-remote.bat** (Windows) or **tools/fix-remote.sh** (Mac/Linux).",
+                title="AR Remote: stock launcher is back",
+                notification_id=note_id,
+            )
+        else:
+            persistent_notification.async_dismiss(self.hass, note_id)
 
     async def async_program(self) -> None:
         """Push the compiled project and full state (Composer's 'Refresh Navigators')."""

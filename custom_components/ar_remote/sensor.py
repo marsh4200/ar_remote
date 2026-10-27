@@ -50,6 +50,8 @@ class VersionSensor(ArRemoteEntity, SensorEntity):
             "project_version": self.runtime.info.get("project_version"),
             "programmed_version": self.runtime.project.get("version"),
             "screen": self.runtime.screen or self.runtime.info.get("screen"),
+            "home_app": self.runtime.info.get("default_home"),
+            "other_launchers": self.runtime.info.get("other_launchers"),
         }
 
 

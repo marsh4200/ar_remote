@@ -60,6 +60,8 @@ echo "Making AR Remote the home screen..."
 echo "Letting pick-up detection run while the remote sleeps..."
 "$ADB" -d shell dumpsys deviceidle whitelist +"$PKG" || true
 "$ADB" -d shell appops set "$PKG" SYSTEM_ALERT_WINDOW allow || true
+echo "Turning off the lock screen and the clock screensaver..."
+"$ADB" -d shell "locksettings set-disabled true; settings put secure screensaver_enabled 0; settings put secure screensaver_activate_on_dock 0; settings put secure screensaver_activate_on_sleep 0" || true
 "$ADB" -d shell am start -n "$PKG/.MainActivity"
 
 echo

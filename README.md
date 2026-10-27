@@ -124,3 +124,12 @@ project and state format, and the HA100 keycode table.
 - **Lights.** Dimmable lights have a slider you can drag with a finger (Left / Right
   on the D-pad still dims in steps). Switches and relays are on / off.
 
+### If RosCard comes back
+
+If the remote shows a clock lock screen again, needs a swipe to unlock, or shows
+RosCard for a moment after updates, the stock launcher has been switched back on
+(Home Assistant also shows a notification). Plug the remote in over USB and run
+`tools/fix-remote.bat` (Windows) or `tools/fix-remote.sh`. It switches RosCard off,
+makes AR Remote the home screen, turns off the lock screen and clock screensaver,
+and writes `tools/fix-report.txt`. `restore-apps` undoes it.
+

@@ -100,8 +100,33 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     override fun onResume() {
         super.onResume()
+        dismissLockScreen()
         hello()
     }
+
+    /** Skip Android's swipe-to-unlock when there's no PIN (we are the remote's UI). */
+    private fun dismissLockScreen() {
+        val km = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
+        if (km.isKeyguardLocked && !km.isKeyguardSecure) {
+            try { km.requestDismissKeyguard(this, null) } catch (_: Exception) {}
+        }
+    }
+
+    private val homeIntent get() = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+
+    /** Which app Android opens for Home (should be us). */
+    private fun defaultHome(): String = try {
+        packageManager.resolveActivity(homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+            ?.activityInfo?.packageName ?: ""
+    } catch (e: Exception) { "" }
+
+    /** Other launchers that are switched on (e.g. RosCard came back). */
+    private fun otherLaunchers(): List<String> = try {
+        packageManager.queryIntentActivities(homeIntent, 0)
+            .map { it.activityInfo.packageName }
+            .filter { it != packageName && it != "com.android.settings" && it != "android" }
+            .distinct()
+    } catch (e: Exception) { emptyList() }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
@@ -497,6 +522,8 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             .put("room", room?.id ?: "")
             .put("self_update", true)
             .put("can_install", packageManager.canRequestPackageInstalls())
+            .put("default_home", defaultHome())
+            .put("other_launchers", org.json.JSONArray(otherLaunchers()))
             .put("wake_sensor", waker.method)
             .put("sensors", org.json.JSONArray(waker.sensorList()))
             .put("doze_exempt", (getSystemService(POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(packageName))
