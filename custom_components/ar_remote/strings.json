@@ -45,14 +45,16 @@
           "off_lights": "Room Off turns off the lights and switches above",
           "off_climate": "Room Off turns off the climate",
           "off_extra": "Room Off also turns off",
-          "off_delayed": "Keep running after Room Off, then switch off (timer per device)"
+          "off_delayed": "Keep running after Room Off, then switch off",
+          "off_delay_minutes": "Keep running for (minutes)"
         },
         "data_description": {
           "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
           "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off.",
           "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
           "off_extra": "Anything else that must be off when the room is off — fans, a heater, an extra amp, a TV that isn't in an activity.",
-          "off_delayed": "These stay on after Room Off and switch off by themselves after their own number of minutes (set on the next page) — e.g. an amp that runs down, or a passage light. Starting an activity that uses one cancels its timer."
+          "off_delayed": "These stay on after Room Off and switch off by themselves. Starting an activity that uses one cancels its timer.",
+          "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
         }
       },
       "pick_room": {
@@ -75,13 +77,15 @@
           "off_lights": "Room Off turns off the lights and switches above",
           "off_climate": "Room Off turns off the climate",
           "off_extra": "Room Off also turns off",
-          "off_delayed": "Keep running after Room Off, then switch off (timer per device)"
+          "off_delayed": "Keep running after Room Off, then switch off",
+          "off_delay_minutes": "Keep running for (minutes)"
         },
         "data_description": {
           "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
           "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
           "off_extra": "Anything else that must be off when the room is off — fans, a heater, an extra amp, a TV that isn't in an activity.",
-          "off_delayed": "These stay on after Room Off and switch off by themselves after their own number of minutes (set on the next page) — e.g. an amp that runs down, or a passage light. Starting an activity that uses one cancels its timer."
+          "off_delayed": "These stay on after Room Off and switch off by themselves. Starting an activity that uses one cancels its timer.",
+          "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
         }
       },
       "add_activity": {

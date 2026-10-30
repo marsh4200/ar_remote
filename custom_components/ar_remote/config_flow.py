@@ -342,6 +342,9 @@ class ArRemoteComposer(OptionsFlow):
                 _opt("off_delayed", {"off_delayed": [d["entity"] for d in _timed(room.get("off_delayed"))]}, []): _ent(
                     OFF_PICK_DOMAINS, multiple=True
                 ),
+                vol.Required("off_delay_minutes", default=_number(room.get("off_delay_minutes"), 10)): NumberSelector(
+                    NumberSelectorConfig(min=0.5, max=720, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="min")
+                ),
                 _opt("off_action", room): _ent(ACTION_DOMAINS),
             }
         )
@@ -354,10 +357,14 @@ class ArRemoteComposer(OptionsFlow):
             room[key] = data.get(key) or None
         room["off_lights"] = bool(data.get("off_lights", True))
         room["off_climate"] = bool(data.get("off_climate", False))
-        # Keep the minutes already set for devices still on the list.
-        minutes = {d["entity"]: d.get("minutes") for d in _timed(room.get("off_delayed"))}
+        # The minutes box on this page is the time for every keep-running device;
+        # a device given its own time on the next page keeps it.
+        old_default = _number(room.get("off_delay_minutes"), 10)
+        default = max(0.5, _number(data.get("off_delay_minutes"), old_default))
+        room["off_delay_minutes"] = default
+        minutes = {d["entity"]: _number(d.get("minutes"), old_default) for d in _timed(room.get("off_delayed"))}
         room["off_delayed"] = [
-            {"entity": eid, "minutes": minutes.get(eid) or 10}
+            {"entity": eid, "minutes": minutes[eid] if eid in minutes and minutes[eid] != old_default else default}
             for eid in dict.fromkeys(data.get("off_delayed") or [])
             if eid
         ]
