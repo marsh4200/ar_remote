@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
@@ -24,6 +26,8 @@ PLATFORMS = [
 ]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+_LOGGER = logging.getLogger(__name__)
 
 SERVICE_PROGRAM = "program"
 SERVICE_INSTALL = "install_app"
@@ -107,7 +111,13 @@ async def _serve_media(hass: HomeAssistant) -> None:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ArRemoteConfigEntry) -> bool:
     runtime = ArRemoteRuntime(hass, entry)
-    await runtime.async_setup()
+    try:
+        await runtime.async_setup()
+    except Exception:
+        # Undo the webhook / listeners, otherwise every retry fails with
+        # "webhook already registered" and the remote stays dead until a restart.
+        await runtime.async_unload()
+        raise
     entry.runtime_data = runtime
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_options_updated))
@@ -116,13 +126,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ArRemoteConfigEntry) -> 
 
 async def _options_updated(hass: HomeAssistant, entry: ArRemoteConfigEntry) -> None:
     """Composer saved: reload so new rooms get entities, then program the remote."""
-    await hass.config_entries.async_reload(entry.entry_id)
-    runtime: ArRemoteRuntime = entry.runtime_data
+    if not await hass.config_entries.async_reload(entry.entry_id):
+        return  # setup failed; HA shows the error on the integration card
+    runtime: ArRemoteRuntime | None = getattr(entry, "runtime_data", None)
+    if runtime is None:
+        return
     try:
         await runtime.async_program()
     except RemoteError:
         # Remote asleep — it picks the new project up on its next hello/poll.
         pass
+    except Exception:  # noqa: BLE001 - never let a save crash the options flow
+        _LOGGER.exception("AR Remote: programming after save failed")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ArRemoteConfigEntry) -> bool:

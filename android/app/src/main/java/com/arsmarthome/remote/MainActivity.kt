@@ -646,8 +646,16 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     }
 
     private fun applyProject(json: JSONObject) {
+        // Parse before saving: a broken project must neither crash the app nor
+        // replace the last good one on disk.
+        val parsed = try {
+            Project.parse(json)
+        } catch (e: Exception) {
+            android.util.Log.w(HaLink.TAG, "project rejected: ${e.message}")
+            return
+        }
         store.saveProject(json)
-        project = Project.parse(json)
+        project = parsed
         if (project?.room(roomId) == null) roomId = project?.defaultRoom
         project?.let { p -> Icons.prune(this, p.rooms.flatMap { r -> r.activities.mapNotNull { it.logo } }) }
         applyDeviceSettings()

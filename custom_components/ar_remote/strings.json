@@ -41,11 +41,18 @@
           "covers": "Shades / blinds",
           "favourites": "Favourites",
           "temperature": "Temperature sensor (shown in the header)",
-          "off_action": "Room Off action (optional)"
+          "off_action": "Room Off action (optional)",
+          "off_lights": "Room Off turns off the lights and switches above",
+          "off_climate": "Room Off turns off the climate",
+          "off_extra": "Room Off also turns off",
+          "off_delayed": "Keep running after Room Off, then switch off (timer per device)"
         },
         "data_description": {
-          "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity's start steps turned on.",
-          "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off."
+          "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
+          "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off.",
+          "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
+          "off_extra": "Anything else that must be off when the room is off — fans, a heater, an extra amp, a TV that isn't in an activity.",
+          "off_delayed": "These stay on after Room Off and switch off by themselves after their own number of minutes (set on the next page) — e.g. an amp that runs down, or a passage light. Starting an activity that uses one cancels its timer."
         }
       },
       "pick_room": {
@@ -64,7 +71,17 @@
           "covers": "Shades / blinds",
           "favourites": "Favourites",
           "temperature": "Temperature sensor (shown in the header)",
-          "off_action": "Room Off action (optional)"
+          "off_action": "Room Off action (optional)",
+          "off_lights": "Room Off turns off the lights and switches above",
+          "off_climate": "Room Off turns off the climate",
+          "off_extra": "Room Off also turns off",
+          "off_delayed": "Keep running after Room Off, then switch off (timer per device)"
+        },
+        "data_description": {
+          "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
+          "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
+          "off_extra": "Anything else that must be off when the room is off — fans, a heater, an extra amp, a TV that isn't in an activity.",
+          "off_delayed": "These stay on after Room Off and switch off by themselves after their own number of minutes (set on the next page) — e.g. an amp that runs down, or a passage light. Starting an activity that uses one cancels its timer."
         }
       },
       "add_activity": {
@@ -155,14 +172,18 @@
       },
       "actions": {
         "title": "What else {activity} does",
-        "description": "Optional. Build it like an HA script: switch other devices on and to a source, dim or colour lights, turn switches on or off, add delays between steps (e.g. wait 2 s). Leave empty and nothing extra happens.",
+        "description": "Optional. Pick devices to switch off or pulse at the top — each gets its own timer on the next page. Below, build anything else like an HA script: other devices and sources, dim or colour lights, delays between steps (e.g. wait 2 s).",
         "data": {
           "start_actions": "When the activity starts",
           "stop_actions": "When the activity ends (switching away or Room Off)",
-          "turn_off_on_end": "Turn off everything the start steps turned on when the activity ends"
+          "turn_off_on_end": "Turn off everything the start steps turned on when the activity ends",
+          "off_on_start": "Turn off when the activity starts",
+          "pulse": "Turn on for a few seconds, then off again"
         },
         "data_description": {
-          "turn_off_on_end": "Lights, switches and players used in the start steps go off at Room Off or when you switch to an activity that doesn't use them. Music is paused first."
+          "turn_off_on_end": "Lights, switches and players used in the start steps go off at Room Off or when you switch to an activity that doesn't use them. Music is paused first.",
+          "off_on_start": "Things that may already be on but must be off for this activity (a light, another TV, a fan). Each gets its own delay on the next page — 0 is straight away.",
+          "pulse": "Each comes on when the activity starts and switches itself off after its own number of seconds (next page) — e.g. a light that flashes on while everything powers up, or a screen-drop relay."
         }
       },
       "remote_settings": {
@@ -201,6 +222,14 @@
           "name": "Name of the copy",
           "room": "Room (leave empty for the same room)"
         }
+      },
+      "room_timers": {
+        "title": "Room Off timers for {room}",
+        "description": "How long each device keeps running after Room Off before it switches itself off. Every device has its own time. The timers survive a Home Assistant restart."
+      },
+      "timers": {
+        "title": "Timers for {activity}",
+        "description": "One time per device, in seconds. **Turn off after**: how long after the activity starts it goes off (0 = straight away). **Stay on for**: how long the device stays on before it switches itself off."
       }
     },
     "error": {
@@ -317,7 +346,7 @@
     },
     "room_off": {
       "name": "Room off",
-      "description": "Turn the room off.",
+      "description": "Turn the room off: every source, amp and activity device, the lights (unless switched off for the room) and anything on the room's off list. Devices set to keep running switch off after their own timer.",
       "fields": {
         "config_entry_id": {
           "name": "Remote",

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import logging
+import time
 from typing import Any
 
 from homeassistant.components import webhook
@@ -19,6 +21,7 @@ from homeassistant.helpers.event import (
 )
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.script import Script, async_validate_actions_config
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 
 from .api import RemoteClient, RemoteError
@@ -49,6 +52,39 @@ OFF_DOMAINS = {
 }
 
 
+def timed_list(items: Any) -> list[dict]:
+    """A stored per-device timer list: [{"entity": "light.x", ...}], junk dropped."""
+    if not isinstance(items, list):
+        return []
+    return [
+        d for d in items
+        if isinstance(d, dict) and isinstance(d.get("entity"), str) and "." in d["entity"]
+    ]
+
+
+def seconds(value: Any, default: float = 0.0) -> float:
+    """A stored number of seconds, never negative, never a crash."""
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def entity_list(value: Any) -> list[str]:
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    return [e for e in value if isinstance(e, str) and "." in e]
+
+
+def _int(value: Any) -> int:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return 0
+
+
 class ArRemoteRuntime:
     """One AR Remote device."""
 
@@ -73,6 +109,12 @@ class ArRemoteRuntime:
         self._unsubs: list = []
         self._scripts: dict[tuple[str, str, str], Script | None] = {}
         self.base_url: str | None = None
+        # Pending "switch this off later" timers, keyed "<room>|<entity>".
+        # Persisted with their wall-clock deadline so a restart doesn't leave
+        # something running forever.
+        self._timers: dict[str, dict] = {}
+        self._timer_unsubs: dict[str, Any] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
 
     # ------------------------------------------------------------------ setup
 
@@ -93,11 +135,27 @@ class ArRemoteRuntime:
         return f"{base}{webhook.async_generate_path(self.webhook_id)}"
 
     async def async_setup(self) -> None:
-        stored = await self._store.async_load() or {}
-        self.current = stored.get("current", {})
+        try:
+            stored = await self._store.async_load() or {}
+        except Exception as err:  # noqa: BLE001 - a damaged file must not stop the remote
+            _LOGGER.warning("AR Remote: stored state unreadable, starting fresh: %s", err)
+            stored = {}
+        if not isinstance(stored, dict):
+            stored = {}
+        current = stored.get("current")
+        self.current = current if isinstance(current, dict) else {}
+        timers = stored.get("timers")
+        if isinstance(timers, dict):
+            self._timers = {
+                key: t for key, t in timers.items()
+                if isinstance(t, dict) and isinstance(t.get("entity"), str)
+                and isinstance(t.get("at"), (int, float))
+            }
         self.project = compile_project(self.hass, self.config)
         self.webhook_url()  # resolves base_url for artwork links
 
+        # A setup that failed half-way may have left our handler behind.
+        webhook.async_unregister(self.hass, self.webhook_id)
         webhook.async_register(
             self.hass, DOMAIN, f"AR Remote {self.client.host}", self.webhook_id,
             self._handle_webhook, local_only=True,
@@ -113,6 +171,9 @@ class ArRemoteRuntime:
             async_track_time_interval(self.hass, self._poll, POLL_INTERVAL)
         )
         self.hass.async_create_task(self._poll())
+        # Timers that were running before a restart / reload: re-arm them once
+        # every integration is up, so the entities exist when they fire.
+        self._unsubs.append(async_at_started(self.hass, self._rearm_timers))
 
     async def async_unload(self) -> None:
         for unsub in self._unsubs:
@@ -120,6 +181,11 @@ class ArRemoteRuntime:
         self._unsubs.clear()
         if self._push_handle:
             self._push_handle()
+            self._push_handle = None
+        # Stop the in-memory timers; they stay in storage and the next setup re-arms them.
+        for unsub in self._timer_unsubs.values():
+            unsub()
+        self._timer_unsubs.clear()
 
     # ------------------------------------------------------------- sync logic
 
@@ -214,13 +280,13 @@ class ArRemoteRuntime:
     # ----------------------------------------------------------------- lookup
 
     def room(self, room_id: str | None) -> dict | None:
-        return next((r for r in self.config.get("rooms", []) if r["id"] == room_id), None)
+        return next((r for r in self.config.get("rooms") or [] if r.get("id") == room_id), None)
 
     def activity(self, room_id: str | None, act_id: str | None) -> dict | None:
         room = self.room(room_id)
         if not room or not act_id:
             return None
-        return next((a for a in room.get("activities", []) if a["id"] == act_id), None)
+        return next((a for a in room.get("activities") or [] if a.get("id") == act_id), None)
 
     # ---------------------------------------------------------------- webhook
 
@@ -231,6 +297,8 @@ class ArRemoteRuntime:
             msg = await request.json()
         except ValueError:
             return web.json_response({"ok": False, "error": "bad json"}, status=400)
+        if not isinstance(msg, dict):
+            return web.json_response({"ok": False, "error": "expected a JSON object"}, status=400)
         try:
             reply = await self.handle_message(msg)
         except Exception as err:  # noqa: BLE001 - never 500 back to the remote
@@ -256,7 +324,7 @@ class ArRemoteRuntime:
         elif kind == "slot":
             act = self.activity(msg.get("room"), msg.get("activity"))
             if act:
-                await self.run_action(act.get("slots", {}).get(msg.get("slot"), {}).get("action"))
+                await self.run_action(((act.get("slots") or {}).get(msg.get("slot")) or {}).get("action"))
         elif kind == "run":
             await self.run_action(msg.get("entity"))
         elif kind == "light":
@@ -278,8 +346,8 @@ class ArRemoteRuntime:
     # ------------------------------------------------------------------- keys
 
     async def _on_key(self, msg: dict) -> None:
-        key = msg.get("key", "UNKNOWN")
-        press = msg.get("press", "short")
+        key = str(msg.get("key") or "UNKNOWN")
+        press = str(msg.get("press") or "short")
         data = {
             "device_id": self.entry.entry_id,
             "host": self.client.host,
@@ -291,8 +359,11 @@ class ArRemoteRuntime:
         }
         if press != "repeat":
             self.hass.bus.async_fire(EVENT_BUTTON, data)
-            for listener in self.button_listeners:
-                listener(key, data)
+            for listener in list(self.button_listeners):
+                try:
+                    listener(key, data)
+                except Exception:  # noqa: BLE001 - an entity error must not stop the key
+                    _LOGGER.exception("AR Remote: button listener failed")
         if msg.get("route") != "device" or press == "long":
             return
 
@@ -306,7 +377,7 @@ class ArRemoteRuntime:
             await self._media(vol, key.lower())
             return
         if key in COLOR_KEYS:
-            slot = act.get("slots", {}).get(COLOR_KEYS[key], {})
+            slot = (act.get("slots") or {}).get(COLOR_KEYS[key]) or {}
             await self.run_action(slot.get("action"))
             return
 
@@ -343,7 +414,10 @@ class ArRemoteRuntime:
     @staticmethod
     def _devices(act: dict) -> list[dict]:
         """The activity's 'Also turn on' list: [{"entity": ..., "source": ... | None}]."""
-        return [d for d in act.get("devices") or [] if isinstance(d, dict) and d.get("entity")]
+        return [
+            d for d in act.get("devices") or []
+            if isinstance(d, dict) and isinstance(d.get("entity"), str) and d["entity"]
+        ]
 
     def _core_entities(self, act: dict) -> set[str]:
         """Source, amp and the extra devices the activity powers on."""
@@ -351,9 +425,14 @@ class ArRemoteRuntime:
         ents |= {d["entity"] for d in self._devices(act)}
         return ents
 
+    @staticmethod
+    def _pulse_entities(act: dict) -> set[str]:
+        """Devices the activity switches on for a few seconds only."""
+        return {d["entity"] for d in timed_list(act.get("pulse"))}
+
     async def _activity_entities(self, room_id: str, act: dict) -> set[str]:
-        """Everything the activity switches on: source, amp, extra devices, start-step targets."""
-        ents = self._core_entities(act)
+        """Everything the activity switches on: source, amp, extra devices, pulses, start-step targets."""
+        ents = self._core_entities(act) | self._pulse_entities(act)
         script = await self._script(room_id, act, "start_actions")
         if script is not None:
             ents |= set(script.referenced_entities)
@@ -381,19 +460,46 @@ class ArRemoteRuntime:
         if act.get("turn_off_on_end", True):
             off = await self._activity_entities(room_id, act) - keep
         else:
-            off = self._core_entities(act) - keep
+            off = (self._core_entities(act) | self._pulse_entities(act)) - keep
         await self._switch_off(off)
         return off
+
+    def _lock(self, room_id: str) -> asyncio.Lock:
+        """One change at a time per room: a fast double-press can't interleave."""
+        return self._locks.setdefault(room_id, asyncio.Lock())
 
     async def start_activity(self, room_id: str | None, act_id: str | None) -> None:
         room = self.room(room_id)
         new = self.activity(room_id, act_id)
         if room is None or new is None:
             return
+        async with self._lock(room["id"]):
+            await self._start_activity(room["id"], new)
+
+    async def _start_activity(self, room_id: str, new: dict) -> None:
         old = self.activity(room_id, self.current.get(room_id))
+        uses = await self._activity_entities(room_id, new)
+        # A Room Off "stay on for X min" or an earlier pulse must not switch off
+        # something this activity is about to use.
+        self._cancel_timers(room_id, uses)
         if old and old["id"] != new["id"]:
-            keep = await self._activity_entities(room_id, new)
-            await self._end_activity(room_id, old, keep)
+            await self._end_activity(room_id, old, uses)
+
+        # 1. Things that must go off when this activity starts (now, or after N s).
+        for item in timed_list(new.get("off_on_start")):
+            after = seconds(item.get("after"))
+            if after > 0:
+                self._schedule_off(room_id, item["entity"], after)
+            else:
+                self._cancel_timers(room_id, {item["entity"]})
+                await self._switch_off({item["entity"]})
+
+        # 2. Pulses: on now, off again by themselves after their own time.
+        for item in timed_list(new.get("pulse")):
+            await self._turn_on(item["entity"])
+            self._schedule_off(room_id, item["entity"], seconds(item.get("seconds"), 5.0) or 5.0)
+
+        # 3. Source, amp and every "Also turn on" device, then inputs.
         for eid in (new.get("volume"), new.get("source")):
             if eid:
                 await self._call("media_player", "turn_on", eid)
@@ -417,22 +523,58 @@ class ArRemoteRuntime:
         self._run(await self._script(room_id, new, "start_actions"))
         await self._set_current(room_id, new["id"])
 
+    def room_off_entities(self, room: dict) -> set[str]:
+        """What Room Off switches off besides the running activity."""
+        ents: set[str] = set()
+        for act in room.get("activities") or []:
+            ents |= self._core_entities(act) | self._pulse_entities(act)
+        if room.get("off_lights", True):
+            ents |= set(entity_list(room.get("lights")))
+        if room.get("off_climate") and room.get("climate"):
+            ents.add(room["climate"])
+        ents |= set(entity_list(room.get("off_extra")))
+        return ents
+
+    @staticmethod
+    def room_off_delayed(room: dict) -> dict[str, float]:
+        """entity -> seconds it keeps running after Room Off."""
+        out: dict[str, float] = {}
+        for item in timed_list(room.get("off_delayed")):
+            secs = seconds(item.get("minutes")) * 60
+            if secs > 0:
+                out[item["entity"]] = secs
+        return out
+
     async def room_off(self, room_id: str | None) -> None:
-        """Everything the room's activities switched on goes off; music pauses first."""
+        """Everything in the room goes off; music pauses first.
+
+        Devices on the room's "keep running" list stay on for their own number
+        of minutes and then switch off by themselves.
+        """
         room = self.room(room_id)
         if room is None:
             return
-        done: set[str] = set()
-        current = self.activity(room_id, self.current.get(room_id))
-        if current:
-            done |= await self._end_activity(room_id, current, set())
-        rest: set[str] = set()
-        for act in room.get("activities", []):
-            rest |= self._core_entities(act)
-        await self._switch_off(rest - done)
-        if room.get("off_action"):
-            await self.run_action(room["off_action"])
-        await self._set_current(room_id, None)
+        room_id = room["id"]
+        async with self._lock(room_id):
+            delayed = self.room_off_delayed(room)
+            hold = set(delayed)
+            current = self.activity(room_id, self.current.get(room_id))
+            rest = self.room_off_entities(room)
+            handled = rest | hold
+            if current:
+                handled |= await self._activity_entities(room_id, current)
+            # Whatever happens to these now is decided here, not by an older timer.
+            self._cancel_timers(room_id, handled)
+
+            done: set[str] = set()
+            if current:
+                done |= await self._end_activity(room_id, current, hold)
+            await self._switch_off(rest - done - hold)
+            for eid, secs in delayed.items():
+                self._schedule_off(room_id, eid, secs)
+            if room.get("off_action"):
+                await self.run_action(room["off_action"])
+            await self._set_current(room_id, None)
 
     async def _turn_on(self, entity_id: str) -> None:
         domain = entity_id.split(".", 1)[0]
@@ -443,10 +585,71 @@ class ArRemoteRuntime:
 
     async def _set_current(self, room_id: str, act_id: str | None) -> None:
         self.current[room_id] = act_id
-        await self._store.async_save({"current": self.current})
+        await self._save()
         self._pending.setdefault("rooms", {})[room_id] = {"activity": act_id}
         self._schedule_push()
         async_dispatcher_send(self.hass, self.signal)
+
+    async def _save(self) -> None:
+        try:
+            await self._store.async_save({"current": self.current, "timers": self._timers})
+        except Exception as err:  # noqa: BLE001 - a full disk must not break the room
+            _LOGGER.warning("AR Remote: could not save state: %s", err)
+
+    # ----------------------------------------------------------------- timers
+
+    @property
+    def timers(self) -> dict[str, dict]:
+        """Pending switch-offs (read-only view for diagnostics)."""
+        return dict(self._timers)
+
+    @callback
+    def _schedule_off(self, room_id: str, entity_id: str, delay: float) -> None:
+        """Switch entity_id off in `delay` seconds (replaces any timer it had)."""
+        key = f"{room_id}|{entity_id}"
+        self._timers[key] = {"room": room_id, "entity": entity_id, "at": time.time() + delay}
+        self._arm(key)
+
+    @callback
+    def _cancel_timers(self, room_id: str, entity_ids: set[str] | None = None) -> None:
+        for key, timer in list(self._timers.items()):
+            if timer.get("room") != room_id:
+                continue
+            if entity_ids is not None and timer.get("entity") not in entity_ids:
+                continue
+            self._timers.pop(key, None)
+            unsub = self._timer_unsubs.pop(key, None)
+            if unsub:
+                unsub()
+
+    @callback
+    def _arm(self, key: str) -> None:
+        timer = self._timers.get(key)
+        old = self._timer_unsubs.pop(key, None)
+        if old:
+            old()
+        if timer is None:
+            return
+        delay = max(0.0, float(timer["at"]) - time.time())
+
+        @callback
+        def _fire(_now: Any) -> None:
+            self._timer_unsubs.pop(key, None)
+            if self._timers.get(key) is not timer:
+                return  # replaced or cancelled meanwhile
+            self._timers.pop(key, None)
+            self.hass.async_create_task(self._timer_fired(timer["entity"]), "ar_remote timer")
+
+        self._timer_unsubs[key] = async_call_later(self.hass, delay, _fire)
+
+    async def _timer_fired(self, entity_id: str) -> None:
+        await self._switch_off({entity_id})
+        await self._save()
+
+    @callback
+    def _rearm_timers(self, _hass: HomeAssistant | None = None) -> None:
+        for key in list(self._timers):
+            self._arm(key)
 
     # ---------------------------------------------------------------- actions
 
@@ -471,13 +674,13 @@ class ArRemoteRuntime:
         if entity and not entity.startswith("light."):
             # A relay / switch in the room's lights: on or off only.
             if msg.get("action") == "set":
-                on = int(msg.get("brightness", 0)) > 0
+                on = _int(msg.get("brightness")) > 0
                 await self._call("homeassistant", "turn_on" if on else "turn_off", entity)
             else:
                 await self._call("homeassistant", "toggle", entity)
             return
         if msg.get("action") == "set":
-            level = max(0, min(100, int(msg.get("brightness", 0))))
+            level = max(0, min(100, _int(msg.get("brightness"))))
             if level == 0:
                 await self._call("light", "turn_off", entity)
             else:
@@ -492,11 +695,12 @@ class ArRemoteRuntime:
             return
         action = msg.get("action")
         if action in ("temp_up", "temp_down"):
-            target = state.attributes.get("temperature")
-            if target is None:
-                return
-            step = float(state.attributes.get("target_temp_step") or 1.0)
-            target = float(target) + (step if action == "temp_up" else -step)
+            try:
+                target = float(state.attributes.get("temperature"))
+                step = float(state.attributes.get("target_temp_step") or 1.0)
+            except (TypeError, ValueError):
+                return  # no target temperature (e.g. the unit is off)
+            target = target + (step if action == "temp_up" else -step)
             await self._call("climate", "set_temperature", entity, {"temperature": target})
         elif action == "mode" and msg.get("value"):
             await self._call("climate", "set_hvac_mode", entity, {"hvac_mode": msg["value"]})

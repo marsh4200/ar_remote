@@ -36,20 +36,32 @@ instead when the app isn't running.)
 
 | Step | What you set |
 | --- | --- |
-| **Add a room** | lights and switches (relays), lighting scenes, climate, shades, favourites, temperature sensor, optional Room Off action |
+| **Add a room** | lights and switches (relays), lighting scenes, climate, shades, favourites, temperature sensor · **Room Off**: lights off (on by default), climate off, *also turn off* list, *keep running* list with its own minutes per device, optional Room Off action |
 | **Add an activity** | Watch or Listen · logo · source media player (+ input or app) · volume device (+ input) · navigation remote + command set · **Also turn on**: any number of extra devices (projector, amp, screen, power switches) · optional start action |
 | **Inputs** | dropdowns of the inputs the source, the amp and each extra media player actually report — leave one empty and that device just switches on |
-| **What else it does** | HA action editor for start and end: other devices + sources, lights (dim/colour), switches, delays between steps |
+| **What else it does** | **Turn off when it starts** (each device: now or after N s) · **Turn on for a few seconds, then off** (each device its own time) · HA action editor for start and end: other devices + sources, lights (dim/colour), switches, delays between steps |
 | **Buttons** | 3 on-screen custom buttons and the red/green/blue/yellow keys — label + script/scene/button |
 | **Copy an activity** | duplicates an activity (devices, inputs, steps, buttons) — set up Netflix once, copy it to Prime and change the name, logo and app |
 | **Remote settings** | your logo (start-up splash and charging screen), charging screen on/off, wake on pick-up (off / auto / always) and its sensitivity |
 | **Save and program** | pushes the project to the remote |
 
-Starting an activity powers on its source, amp and every **Also turn on** device, selects inputs, runs the start
-action, and turns off anything the previous activity used that this one doesn't.
-**Room Off** (or the remote's power key) pauses the music, turns off every source
-and amp in the room, every **Also turn on** device and everything the activity's start steps turned on, runs the
-activity's end steps, then your optional room off action.
+Starting an activity, in order:
+
+1. turns off anything the previous activity used that this one doesn't;
+2. turns off everything on its **Turn off when the activity starts** list (each straight away or after its own delay);
+3. switches on every **Turn on for a few seconds** device — each one switches itself off after its own time;
+4. powers on its source, amp and every **Also turn on** device, selects inputs, runs the start action and start steps.
+
+**Room Off** (or the remote's power key) is *everything off*: it pauses the music, turns off every source
+and amp in the room, every **Also turn on** device, everything the activity's start steps turned on, the
+room's lights and switches (untick *Room Off turns off the lights* to leave them), the climate if ticked and
+everything on the room's **Also turns off** list, runs the activity's end steps, then your optional room off action.
+Nothing is turned back on afterwards.
+
+Devices on the room's **Keep running after Room Off** list are the exception: each stays on for its own
+number of minutes and then switches itself off (an amp running down, a passage light to walk out by).
+Starting an activity that uses one of them cancels its timer. All timers are saved, so a Home Assistant
+restart doesn't leave anything running — an overdue timer fires as soon as HA is back.
 
 ### Command sets
 
@@ -57,6 +69,17 @@ The navigation remote gets `remote.send_command` with the names the platform
 expects: `apple_tv`, `android_tv`, `roku`, `samsung_tv`, `lg_webos`,
 `ir_generic` (Broadlink / IR learned codes named `up`, `down`, `ok`, `back` …).
 Transport keys fall back to the source media player when the set has no command.
+
+## Changes in 2.6.0
+
+- Per-device timers in activities: *turn off when the activity starts* (now or after N s) and
+  *turn on for a few seconds, then off*.
+- Room Off turns the whole room off (lights included, climate optional, extra off list), with an
+  optional *keep running for N minutes* timer per device. Timers survive restarts.
+- Stability: one change at a time per room (a fast double-press can't interleave), a failed setup no
+  longer blocks the webhook until a restart, odd state values and damaged settings can't break
+  setup or state pushes, and the app no longer crashes when a request to it is cut off or a
+  damaged project arrives.
 
 ## Button routing
 

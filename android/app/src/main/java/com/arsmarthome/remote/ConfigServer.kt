@@ -53,12 +53,31 @@ class ConfigServer(private val port: Int, private val routes: Routes) {
 
     @Volatile private var stopped = false
 
+    companion object {
+        /** Projects are a few KB; anything far bigger is not from Home Assistant. */
+        private const val MAX_BODY = 4 * 1024 * 1024
+    }
+
     fun stop() {
         stopped = true
         socket?.close()
     }
 
+    /**
+     * Never let one bad request kill the app: an exception escaping a pool
+     * thread is an uncaught exception, and Android ends the whole process.
+     * (A client that hangs up mid-reply, a read timeout, a bogus length …)
+     */
     private fun handle(client: Socket) {
+        try {
+            serve(client)
+        } catch (e: Throwable) {
+            Log.w(HaLink.TAG, "request failed: ${e.message}")
+            try { client.close() } catch (_: Exception) {}
+        }
+    }
+
+    private fun serve(client: Socket) {
         client.use { sock ->
             sock.soTimeout = 8000
             val input = BufferedInputStream(sock.getInputStream())
@@ -72,7 +91,7 @@ class ConfigServer(private val port: Int, private val routes: Routes) {
                 val line = readLine(input) ?: break
                 if (line.isEmpty()) break
                 if (line.lowercase().startsWith("content-length:")) {
-                    length = line.substringAfter(':').trim().toIntOrNull() ?: 0
+                    length = (line.substringAfter(':').trim().toIntOrNull() ?: 0).coerceIn(0, MAX_BODY)
                 }
             }
             val body = ByteArray(length)

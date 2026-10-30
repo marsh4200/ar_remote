@@ -533,3 +533,60 @@ async def test_installer_pin_is_hashed(hass: HomeAssistant, client) -> None:
     assert dev["pin_hash"] == pin_hash("2580")
     assert dev["pin_hash"].startswith("fe262987")
     assert compile_project(hass, entry.options["project"])["device"]["pin_hash"] == pin_hash("2580")
+
+
+async def test_pulse_turn_off_on_start_and_room_off_timers(hass: HomeAssistant, client) -> None:
+    """Per-device timers: pulse, off-on-start, Room Off everything + keep-running minutes."""
+    from datetime import timedelta
+    from homeassistant.util import dt as dt_util
+    from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+    project = {"rooms": [{
+        "id": "lounge", "name": "Lounge", "lights": ["light.down"], "off_lights": True,
+        "off_extra": ["fan.ceiling"],
+        "off_delayed": [{"entity": "switch.amp_power", "minutes": 2}],
+        "activities": [{
+            "id": "tv", "name": "TV", "kind": "watch", "source": "media_player.atv", "slots": {},
+            "devices": [{"entity": "switch.amp_power", "source": None}],
+            "off_on_start": [{"entity": "light.kitchen", "after": 0}],
+            "pulse": [{"entity": "light.flash", "seconds": 3}],
+        }],
+    }]}
+    hass.config.internal_url = "http://192.168.88.2:8123"
+    assert await async_setup_component(hass, "http", {})
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={"host": HOST, "port": 8080, "adb_port": 5555, "webhook_id": "tmr"},
+        options={"project": project},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    async_mock_service(hass, "media_player", "turn_on")
+    async_mock_service(hass, "media_player", "media_pause")
+    async_mock_service(hass, "media_player", "turn_off")
+    async_mock_service(hass, "switch", "turn_on")
+    light_on = async_mock_service(hass, "light", "turn_on")
+    ha_off = async_mock_service(hass, "homeassistant", "turn_off")
+
+    rt = entry.runtime_data
+    await rt.start_activity("lounge", "tv")
+    await hass.async_block_till_done()
+    assert [c.data["entity_id"] for c in light_on] == ["light.flash"]
+    assert [c.data["entity_id"] for c in ha_off] == ["light.kitchen"]
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=4))
+    await hass.async_block_till_done()
+    assert [c.data["entity_id"] for c in ha_off] == ["light.kitchen", "light.flash"]
+
+    ha_off.clear()
+    await rt.room_off("lounge")
+    await hass.async_block_till_done()
+    off = {c.data["entity_id"] for c in ha_off}
+    assert {"light.down", "fan.ceiling", "light.flash"} <= off
+    assert "switch.amp_power" not in off  # keeps running for 2 minutes
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=3))
+    await hass.async_block_till_done()
+    assert "switch.amp_power" in {c.data["entity_id"] for c in ha_off}
+    assert rt.timers == {}

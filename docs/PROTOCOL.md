@@ -41,7 +41,7 @@ device's Android ID). The reply is JSON.
 | `hello`       | `version`, `project_version` | replies `{"project":{…}\|null,"state":{full state}}` — project only when the app's version differs |
 | `key`         | `key`, `code`, `press` (`short`\|`long`\|`repeat`), `route` (`device`\|`ui`), `room`, `activity`, `screen` | fires `ar_remote_button` + event entity; if `route` is `device`, runs the mapped command |
 | `activity`    | `room`, `activity` | starts the activity (powers on source, amp and extra devices, inputs, power-on script, turns off what the previous activity used) |
-| `room_off`    | `room` | room off script, or turns off every source and amp in the room |
+| `room_off`    | `room` | everything in the room off (sources, amps, activity devices, lights, off list); keep-running devices switch off after their own timer; then the room off action |
 | `slot`        | `room`, `activity`, `slot` (`custom1..3`, `red`, `green`, `blue`, `yellow`) | runs that slot's action |
 | `run`         | `entity` | scene/script/button/automation |
 | `light`       | `entity`, `action` (`toggle`\|`set`), `brightness` 0–100 | light service |

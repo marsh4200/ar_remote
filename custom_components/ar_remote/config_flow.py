@@ -91,6 +91,27 @@ def _devices(act: dict) -> list[dict]:
     return [d for d in act.get("devices") or [] if isinstance(d, dict) and d.get("entity")]
 
 
+# What Room Off / "turn off when the activity starts" can switch off.
+OFF_PICK_DOMAINS = [
+    "light", "switch", "media_player", "fan", "input_boolean", "climate",
+    "remote", "siren", "humidifier",
+]
+
+
+def _timed(items: Any) -> list[dict]:
+    """A stored per-device timer list, junk dropped."""
+    if not isinstance(items, list):
+        return []
+    return [d for d in items if isinstance(d, dict) and isinstance(d.get("entity"), str)]
+
+
+def _number(value: Any, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def pin_hash(pin: str) -> str:
     """What the remote checks: sha256("ar_remote:" + PIN). The PIN itself isn't stored."""
     return hashlib.sha256(f"ar_remote:{pin}".encode()).hexdigest()
@@ -171,6 +192,7 @@ class ArRemoteComposer(OptionsFlow):
         self._room_id: str | None = None
         self._act_id: str | None = None
         self._device_keys: dict[str, str] = {}
+        self._timer_keys: dict[str, tuple[str, str]] = {}
 
     # ----------------------------------------------------------------- helpers
 
@@ -314,23 +336,39 @@ class ArRemoteComposer(OptionsFlow):
                 _opt("covers", room, []): _ent("cover", multiple=True),
                 _opt("favourites", room, []): _ent(ACTION_DOMAINS, multiple=True),
                 _opt("temperature", room): _ent("sensor"),
+                vol.Required("off_lights", default=room.get("off_lights", True)): BooleanSelector(),
+                vol.Required("off_climate", default=room.get("off_climate", False)): BooleanSelector(),
+                _opt("off_extra", room, []): _ent(OFF_PICK_DOMAINS, multiple=True),
+                _opt("off_delayed", {"off_delayed": [d["entity"] for d in _timed(room.get("off_delayed"))]}, []): _ent(
+                    OFF_PICK_DOMAINS, multiple=True
+                ),
                 _opt("off_action", room): _ent(ACTION_DOMAINS),
             }
         )
 
     def _apply_room(self, room: dict, data: dict) -> None:
-        room["name"] = data["name"].strip()
-        for key in ("lights", "scenes", "covers", "favourites"):
+        room["name"] = (data.get("name") or "").strip() or room.get("name") or "Room"
+        for key in ("lights", "scenes", "covers", "favourites", "off_extra"):
             room[key] = list(data.get(key) or [])
         for key in ("climate", "temperature", "off_action"):
             room[key] = data.get(key) or None
+        room["off_lights"] = bool(data.get("off_lights", True))
+        room["off_climate"] = bool(data.get("off_climate", False))
+        # Keep the minutes already set for devices still on the list.
+        minutes = {d["entity"]: d.get("minutes") for d in _timed(room.get("off_delayed"))}
+        room["off_delayed"] = [
+            {"entity": eid, "minutes": minutes.get(eid) or 10}
+            for eid in dict.fromkeys(data.get("off_delayed") or [])
+            if eid
+        ]
 
     async def async_step_add_room(self, user_input: dict | None = None) -> ConfigFlowResult:
         if user_input is not None:
             room = {"id": _unique_id(user_input["name"], {r["id"] for r in self.rooms}), "activities": []}
             self._apply_room(room, user_input)
             self.rooms.append(room)
-            return await self.async_step_init()
+            self._room_id = room["id"]
+            return await self.async_step_room_timers()
         return self.async_show_form(step_id="add_room", data_schema=self._room_schema({}))
 
     async def async_step_pick_room(self, user_input: dict | None = None) -> ConfigFlowResult:
@@ -348,10 +386,52 @@ class ArRemoteComposer(OptionsFlow):
             return await self.async_step_init()
         if user_input is not None:
             self._apply_room(room, user_input)
-            return await self.async_step_init()
+            return await self.async_step_room_timers()
         return self.async_show_form(
             step_id="edit_room",
             data_schema=self._room_schema(room),
+            description_placeholders={"room": room["name"]},
+        )
+
+    def _timer_field_keys(self, groups: list[tuple[str, str, list[str]]]) -> dict[str, tuple[str, str]]:
+        """Form field name -> (list, entity). The field name is its label: '<device> — <what>'."""
+        keys: dict[str, tuple[str, str]] = {}
+        for group, what, entities in groups:
+            for eid in entities:
+                key = f"{self._name_of(eid)} — {what}"
+                if key in keys:
+                    key = f"{self._name_of(eid)} ({eid}) — {what}"
+                keys[key] = (group, eid)
+        return keys
+
+    async def async_step_room_timers(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """How long each 'keep running after Room Off' device stays on."""
+        room = self._room(self._room_id)
+        if room is None:
+            return await self.async_step_init()
+        delayed = _timed(room.get("off_delayed"))
+        if not delayed:
+            return await self.async_step_init()
+        if user_input is not None:
+            minutes = {eid: user_input.get(key) for key, (_g, eid) in self._timer_keys.items()}
+            for item in delayed:
+                item["minutes"] = max(0.5, _number(minutes.get(item["entity"]), item.get("minutes") or 10))
+            room["off_delayed"] = delayed
+            return await self.async_step_init()
+
+        self._timer_keys = self._timer_field_keys(
+            [("off_delayed", "minutes after Room Off", [d["entity"] for d in delayed])]
+        )
+        current = {d["entity"]: _number(d.get("minutes"), 10) for d in delayed}
+        fields = {
+            vol.Required(key, default=current.get(eid, 10)): NumberSelector(
+                NumberSelectorConfig(min=0.5, max=720, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="min")
+            )
+            for key, (_g, eid) in self._timer_keys.items()
+        }
+        return self.async_show_form(
+            step_id="room_timers",
+            data_schema=vol.Schema(fields),
             description_placeholders={"room": room["name"]},
         )
 
@@ -563,9 +643,26 @@ class ArRemoteComposer(OptionsFlow):
             act["start_actions"] = list(user_input.get("start_actions") or [])
             act["stop_actions"] = list(user_input.get("stop_actions") or [])
             act["turn_off_on_end"] = bool(user_input.get("turn_off_on_end", True))
-            return await self.async_step_buttons()
+            # Keep the times already set for devices still listed.
+            after = {d["entity"]: d.get("after") for d in _timed(act.get("off_on_start"))}
+            pulse = {d["entity"]: d.get("seconds") for d in _timed(act.get("pulse"))}
+            act["off_on_start"] = [
+                {"entity": eid, "after": after.get(eid) or 0}
+                for eid in dict.fromkeys(user_input.get("off_on_start") or []) if eid
+            ]
+            act["pulse"] = [
+                {"entity": eid, "seconds": pulse.get(eid) or 5}
+                for eid in dict.fromkeys(user_input.get("pulse") or []) if eid
+            ]
+            return await self.async_step_timers()
         schema = vol.Schema(
             {
+                _opt("off_on_start", {"off_on_start": [d["entity"] for d in _timed(act.get("off_on_start"))]}, []): _ent(
+                    OFF_PICK_DOMAINS, multiple=True
+                ),
+                _opt("pulse", {"pulse": [d["entity"] for d in _timed(act.get("pulse"))]}, []): _ent(
+                    DEVICE_DOMAINS, multiple=True
+                ),
                 _opt("start_actions", act, []): ActionSelector(ActionSelectorConfig()),
                 _opt("stop_actions", act, []): ActionSelector(ActionSelectorConfig()),
                 vol.Required("turn_off_on_end", default=act.get("turn_off_on_end", True)): BooleanSelector(),
@@ -574,6 +671,49 @@ class ArRemoteComposer(OptionsFlow):
         return self.async_show_form(
             step_id="actions",
             data_schema=schema,
+            description_placeholders={"activity": act["name"]},
+        )
+
+    async def async_step_timers(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """A time for each device picked on the previous page."""
+        act = self._activity(self._room_id, self._act_id)
+        if act is None:
+            return await self.async_step_init()
+        offs, pulses = _timed(act.get("off_on_start")), _timed(act.get("pulse"))
+        if not offs and not pulses:
+            return await self.async_step_buttons()
+        if user_input is not None:
+            for key, (group, eid) in self._timer_keys.items():
+                value = user_input.get(key)
+                if group == "off_on_start":
+                    for item in offs:
+                        if item["entity"] == eid:
+                            item["after"] = max(0.0, _number(value, item.get("after") or 0))
+                else:
+                    for item in pulses:
+                        if item["entity"] == eid:
+                            item["seconds"] = max(0.5, _number(value, item.get("seconds") or 5))
+            act["off_on_start"], act["pulse"] = offs, pulses
+            return await self.async_step_buttons()
+
+        self._timer_keys = self._timer_field_keys(
+            [
+                ("off_on_start", "turn off after (0 = straight away)", [d["entity"] for d in offs]),
+                ("pulse", "stay on for, then off", [d["entity"] for d in pulses]),
+            ]
+        )
+        current = {
+            ("off_on_start", d["entity"]): _number(d.get("after"), 0) for d in offs
+        } | {("pulse", d["entity"]): _number(d.get("seconds"), 5) for d in pulses}
+        fields: dict = {}
+        for key, ref in self._timer_keys.items():
+            low = 0 if ref[0] == "off_on_start" else 0.5
+            fields[vol.Required(key, default=current.get(ref, low))] = NumberSelector(
+                NumberSelectorConfig(min=low, max=3600, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
+            )
+        return self.async_show_form(
+            step_id="timers",
+            data_schema=vol.Schema(fields),
             description_placeholders={"activity": act["name"]},
         )
 
