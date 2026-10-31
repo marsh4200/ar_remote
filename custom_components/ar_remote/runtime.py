@@ -384,6 +384,22 @@ class ArRemoteRuntime:
                     listener(key, data)
                 except Exception:  # noqa: BLE001 - an entity error must not stop the key
                     _LOGGER.exception("AR Remote: button listener failed")
+        # Colour keys: run the activity's action whatever the remote decided about
+        # routing (an older app, or a remote that lost track of the activity,
+        # sends them as "ui" and they did nothing).
+        if key in COLOR_KEYS and press == "short":
+            room_id = msg.get("room")
+            act = self._activity_for_key(room_id, msg.get("activity"), COLOR_KEYS[key])
+            if act is None:
+                self._note_press(room_id, {
+                    "button": COLOR_KEYS[key], "via": "key",
+                    "result": "no activity running in this room — start one first",
+                })
+                _LOGGER.warning("AR Remote: %s pressed in room %s, but no activity is running there", key, room_id)
+                return
+            self.hass.async_create_task(self._slot(room_id, act, COLOR_KEYS[key], "key"), "ar_remote button")
+            return
+
         if msg.get("route") != "device" or press == "long":
             return
 
@@ -887,6 +903,19 @@ class ArRemoteRuntime:
             self._arm(key)
 
     # ---------------------------------------------------------------- actions
+
+    def _activity_for_key(self, room_id: str | None, reported: str | None, slot: str) -> dict | None:
+        """The activity a colour key belongs to: HA's record, else what the remote
+        reports, else the room's only activity with something on that key."""
+        act = self.activity(room_id, self.current.get(room_id or "")) or self.activity(room_id, reported)
+        if act is not None:
+            return act
+        room = self.room(room_id)
+        with_slot = [
+            a for a in (room or {}).get("activities") or []
+            if ((a.get("slots") or {}).get(slot) or {}).get("action")
+        ]
+        return with_slot[0] if len(with_slot) == 1 else None
 
     @callback
     def _note_press(self, room_id: str | None, info: dict) -> None:
