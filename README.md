@@ -75,6 +75,10 @@ Transport keys fall back to the source media player when the set has no command.
 
 ## Changes in 2.6.0
 
+- Every Also-turn-on device can have a **turn off with** command (activity step 2): an IR "projector off"
+  button, a script or a plug. Room Off and timers use it instead of the on-button.
+- Colour / custom buttons can toggle a light or switch directly; the room's activity entity shows
+  **last_button** (what was pressed and what happened). Composer pages are numbered and explain themselves.
 - **Also turn on** takes buttons, scripts and scenes too (an IR "projector on" button is pressed).
   A button on a Room Off list is pressed (a "projector off" button, now or after its minutes).
 - Inputs page: shows the input the device is on now and inputs typed before; type any input that

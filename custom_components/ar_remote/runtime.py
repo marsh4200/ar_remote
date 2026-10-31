@@ -127,6 +127,8 @@ class ArRemoteRuntime:
         self._input_tasks: dict[str, asyncio.Task] = {}
         # Per room: what the last Room Off did (shown on the room's activity entity).
         self.last_room_off: dict[str, dict] = {}
+        # Per room: the last custom / colour button press and what came of it.
+        self.last_button: dict[str, dict] = {}
 
     # ------------------------------------------------------------------ setup
 
@@ -337,9 +339,12 @@ class ArRemoteRuntime:
         elif kind == "room_off":
             await self.room_off(msg.get("room"))
         elif kind == "slot":
-            act = self.activity(msg.get("room"), msg.get("activity"))
-            if act:
-                await self.run_action(((act.get("slots") or {}).get(msg.get("slot")) or {}).get("action"))
+            room_id = msg.get("room")
+            act = self.activity(room_id, msg.get("activity"))
+            # In the background: a long script must not hold up the remote's next press.
+            self.hass.async_create_task(
+                self._slot(room_id, act, str(msg.get("slot") or ""), "screen"), "ar_remote button"
+            )
         elif kind == "run":
             await self.run_action(msg.get("entity"))
         elif kind == "light":
@@ -397,6 +402,8 @@ class ArRemoteRuntime:
         act = self.activity(room_id, self.current.get(room_id)) or self.activity(room_id, msg.get("activity"))
         if act is None:
             _LOGGER.warning("AR Remote: %s pressed in room %s, but no activity is running there", key, room_id)
+            if key in COLOR_KEYS:
+                self._note_press(room_id, {"button": COLOR_KEYS[key], "result": "no activity running in this room"})
             return
 
         if key in ("VOLUME_UP", "VOLUME_DOWN", "MUTE"):
@@ -404,13 +411,7 @@ class ArRemoteRuntime:
             await self._media(vol, key.lower())
             return
         if key in COLOR_KEYS:
-            slot = (act.get("slots") or {}).get(COLOR_KEYS[key]) or {}
-            if not slot.get("action"):
-                _LOGGER.warning(
-                    "AR Remote: %s pressed in %s, but the %s key has no action set",
-                    key, act.get("name"), COLOR_KEYS[key],
-                )
-            await self.run_action(slot.get("action"))
+            self.hass.async_create_task(self._slot(room_id, act, COLOR_KEYS[key], "key"), "ar_remote button")
             return
 
         commands = COMMAND_SETS.get(act.get("command_set") or "", {})
@@ -537,6 +538,51 @@ class ArRemoteRuntime:
                 if report is not None:
                     report.setdefault("switched_off", []).append(eid)
 
+    def _off_commands(self, room_id: str) -> dict[str, str]:
+        """device -> its 'turn off with' command, from every activity in the room."""
+        out: dict[str, str] = {}
+        for act in (self.room(room_id) or {}).get("activities") or []:
+            for dev in self._devices(act):
+                off = dev.get("off")
+                if isinstance(off, str) and "." in off:
+                    out[dev["entity"]] = off
+        return out
+
+    async def _power_off(
+        self, room_id: str, entity_ids: set[str], report: dict | None = None, listed: bool = False
+    ) -> None:
+        """Switch devices off the right way.
+
+        - a device with a "turn off with" command: that command (e.g. the IR
+          "projector off" button) — never its "on" button again;
+        - a button / script / scene: pressed only when the installer put it on
+          an off list (`listed`); an "on" button without an off command can't be
+          switched off and is reported;
+        - everything else: switched off.
+        """
+        cmds = self._off_commands(room_id)
+        devices = {d["entity"] for a in (self.room(room_id) or {}).get("activities") or [] for d in self._devices(a)}
+        plain: set[str] = set()
+        for eid in sorted(entity_ids):
+            cmd = cmds.get(eid)
+            if cmd:
+                if cmd.split(".", 1)[0] in PRESS_DOMAINS:
+                    await self.run_action(cmd)
+                    if report is not None:
+                        report.setdefault("pressed", []).append(cmd)
+                else:
+                    await self._switch_off({cmd}, report)
+            elif eid.split(".", 1)[0] in PRESS_DOMAINS:
+                if listed:
+                    await self.run_action(eid)
+                    if report is not None:
+                        report.setdefault("pressed", []).append(eid)
+                elif eid in devices and report is not None:
+                    report.setdefault("cannot_power_off", []).append(f"{eid} (no 'turn off with' set)")
+            else:
+                plain.add(eid)
+        await self._switch_off(plain, report)
+
     async def _off_or_press(self, entity_ids: set[str]) -> None:
         """For lists the installer picked: switch things off, press buttons / run scripts.
 
@@ -558,7 +604,7 @@ class ArRemoteRuntime:
             off = await self._activity_entities(room_id, act) - keep
         else:
             off = (self._core_entities(act) | self._pulse_entities(act)) - keep
-        await self._switch_off(off, report)
+        await self._power_off(room_id, off, report)
         return off
 
     def _lock(self, room_id: str) -> asyncio.Lock:
@@ -590,7 +636,7 @@ class ArRemoteRuntime:
                 self._schedule_off(room_id, item["entity"], after)
             else:
                 self._cancel_timers(room_id, {item["entity"]})
-                await self._off_or_press({item["entity"]})
+                await self._power_off(room_id, {item["entity"]}, listed=True)
 
         # 2. Pulses: on now, off again by themselves after their own time.
         for item in timed_list(new.get("pulse")):
@@ -721,11 +767,13 @@ class ArRemoteRuntime:
             # _switch_off leaves buttons alone (an activity's "projector on"
             # button must not be pressed at Room Off); buttons on the room's own
             # off list are pressed.
-            await self._switch_off(rest - done - hold, report)
-            off_list = set(entity_list(room.get("off_extra"))) - hold
-            for eid in sorted(e for e in off_list if e.split(".", 1)[0] in PRESS_DOMAINS):
-                await self.run_action(eid)
-                report.setdefault("pressed", []).append(eid)
+            # Devices the room's activities use: their own "turn off with" command,
+            # else switched off. A device that was switched on by a button and has
+            # no off command can't be switched off and is reported.
+            off_list = set(entity_list(room.get("off_extra")))
+            await self._power_off(room_id, rest - off_list - done - hold, report)
+            # The room's own "also turn off" list: buttons / scripts on it are pressed.
+            await self._power_off(room_id, off_list - done - hold, report, listed=True)
             for eid, secs in delayed.items():
                 self._schedule_off(room_id, eid, secs)
             report["kept_running_minutes"] = {e: round(v / 60, 1) for e, v in delayed.items()}
@@ -823,12 +871,14 @@ class ArRemoteRuntime:
             if self._timers.get(key) is not timer:
                 return  # replaced or cancelled meanwhile
             self._timers.pop(key, None)
-            self.hass.async_create_task(self._timer_fired(timer["entity"]), "ar_remote timer")
+            self.hass.async_create_task(
+                self._timer_fired(str(timer.get("room") or ""), timer["entity"]), "ar_remote timer"
+            )
 
         self._timer_unsubs[key] = async_call_later(self.hass, delay, _fire)
 
-    async def _timer_fired(self, entity_id: str) -> None:
-        await self._off_or_press({entity_id})
+    async def _timer_fired(self, room_id: str, entity_id: str) -> None:
+        await self._power_off(room_id, {entity_id}, listed=True)
         await self._save()
 
     @callback
@@ -837,6 +887,51 @@ class ArRemoteRuntime:
             self._arm(key)
 
     # ---------------------------------------------------------------- actions
+
+    @callback
+    def _note_press(self, room_id: str | None, info: dict) -> None:
+        if not room_id:
+            return
+        info["at"] = dt_util.now().isoformat(timespec="seconds")
+        self.last_button[room_id] = info
+        async_dispatcher_send(self.hass, self.signal)
+
+    async def _slot(self, room_id: str | None, act: dict | None, slot: str, via: str) -> None:
+        """A custom / colour button: run its action and record what happened."""
+        info: dict[str, Any] = {"button": slot, "via": via}
+        if act is None:
+            info["result"] = "activity not found (save and program the remote again)"
+            self._note_press(room_id, info)
+            return
+        info["activity"] = act.get("name")
+        action = ((act.get("slots") or {}).get(slot) or {}).get("action")
+        info["action"] = action
+        if not action:
+            info["result"] = "no action set for this button"
+            _LOGGER.warning("AR Remote: %s button in %s has no action set", slot, act.get("name"))
+            self._note_press(room_id, info)
+            return
+        domain, service = self._action_service(action)
+        try:
+            await self.hass.services.async_call(domain, service, {"entity_id": action}, blocking=True)
+            info["result"] = f"ok ({domain}.{service})"
+        except Exception as err:  # noqa: BLE001 - show it, never break the remote
+            info["result"] = f"failed: {err}"
+            _LOGGER.warning("AR Remote: %s button (%s) failed: %s", slot, action, err)
+        self._note_press(room_id, info)
+
+    @staticmethod
+    def _action_service(entity_id: str) -> tuple[str, str]:
+        """script/scene → turn_on, button → press, automation → trigger, anything else → toggle."""
+        domain = entity_id.split(".", 1)[0]
+        service = {
+            "script": "turn_on",
+            "scene": "turn_on",
+            "button": "press",
+            "input_button": "press",
+            "automation": "trigger",
+        }.get(domain)
+        return (domain, service) if service else ("homeassistant", "toggle")
 
     async def run_action(self, entity_id: str | None) -> None:
         if not entity_id or "." not in entity_id:

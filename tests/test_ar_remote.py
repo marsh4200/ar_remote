@@ -357,9 +357,9 @@ async def test_also_turn_on_devices_in_composer(hass: HomeAssistant, client) -> 
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "save"})
     act = entry.options["project"]["rooms"][0]["activities"][0]
     assert act["devices"] == [
-        {"entity": "media_player.projector", "source": "HDMI 2"},
-        {"entity": "switch.screen", "source": None},
-        {"entity": "media_player.amp", "source": None},
+        {"entity": "media_player.projector", "source": "HDMI 2", "off": None},
+        {"entity": "switch.screen", "source": None, "off": None},
+        {"entity": "media_player.amp", "source": None, "off": None},
     ]
 
 
@@ -474,7 +474,7 @@ async def test_copy_activity_and_logo(hass: HomeAssistant, client) -> None:
     acts = entry.options["project"]["rooms"][0]["activities"]
     prime = acts[1]
     assert prime["id"] == "prime" and prime["source_input"] == "Prime Video"
-    assert prime["devices"] == [{"entity": "media_player.projector", "source": "HDMI 2"}]
+    assert prime["devices"] == [{"entity": "media_player.projector", "source": "HDMI 2", "off": None}]
     assert prime["slots"]["red"]["action"] == "script.dim"
     assert acts[0]["logo"] == "/local/netflix.png"  # original untouched
 

@@ -19,7 +19,7 @@
     "step": {
       "init": {
         "title": "AR Remote Composer",
-        "description": "{summary}\n\nChanges are kept here until you choose **Save and program the remote**.",
+        "description": "{summary}\n\n**How it fits together:** a **room** holds its lights, scenes, aircon, shades and what Room Off does. An **activity** (Watch Apple TV, Listen to music …) is what the room is doing: which devices switch on, which inputs they go to, and what the remote's buttons control while it runs.\n\nChanges are kept here until you choose **Save and program the remote**.",
         "menu_options": {
           "add_room": "Add a room",
           "pick_room": "Edit a room",
@@ -32,7 +32,7 @@
         }
       },
       "add_room": {
-        "title": "Add a room",
+        "title": "Room — step 1 of 2",
         "data": {
           "name": "Room name",
           "lights": "Lights and switches (relays)",
@@ -55,7 +55,8 @@
           "off_extra": "Anything else that must be off when the room is off — fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
           "off_delayed": "These stay on after Room Off and switch off by themselves. A **button** here is pressed when its time is up (e.g. projector off after the lamp cools). Starting an activity that uses one cancels its timer.",
           "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
-        }
+        },
+        "description": "**Room step 1 of 2.** Top half: what the remote shows for this room. Bottom half (**Room Off**): what the power key / Room Off does.\n\nRoom Off always switches off everything the room's activities switched on (amp, TV, projector …). Below you choose what else goes off, and what keeps running for a few minutes first."
       },
       "pick_room": {
         "title": "Edit a room",
@@ -64,7 +65,7 @@
         }
       },
       "edit_room": {
-        "title": "Edit {room}",
+        "title": "{room} — step 1 of 2",
         "data": {
           "name": "Room name",
           "lights": "Lights and switches (relays)",
@@ -86,11 +87,12 @@
           "off_extra": "Anything else that must be off when the room is off — fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
           "off_delayed": "These stay on after Room Off and switch off by themselves. A **button** here is pressed when its time is up (e.g. projector off after the lamp cools). Starting an activity that uses one cancels its timer.",
           "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
-        }
+        },
+        "description": "**Room step 1 of 2.** Top half: what the remote shows for this room. Bottom half (**Room Off**): what the power key / Room Off does.\n\nRoom Off always switches off everything the room's activities switched on (amp, TV, projector …). Below you choose what else goes off, and what keeps running for a few minutes first."
       },
       "add_activity": {
-        "title": "Add an activity",
-        "description": "An activity is what the room is doing — like Watch Apple TV. While it runs, the remote's hard buttons drive these devices.",
+        "title": "Activity — step 1 of 4: devices",
+        "description": "**Activity step 1 of 4: the devices.**\n\n• **Source**: what you watch or listen to (Apple TV, DStv, Spotify). The D-pad, OK and play keys control it.\n• **Volume device**: what the volume keys control (the amp / soundbar / TV).\n• **Also turn on**: everything else that must come on — projector, screen, subwoofer. Network devices, plugs / relays, or an IR / RF **button** that switches one on.\n\nNext page: which input each one goes to, and how button-controlled devices are switched off.",
         "data": {
           "room": "Room",
           "name": "Activity name",
@@ -108,14 +110,14 @@
           "volume": "Volume, mute and the volume rocker go here. Leave empty to use the source.",
           "dpad": "A remote entity — Apple TV, Android TV, Roku, Samsung, LG or a Broadlink/IR remote.",
           "command_set": "Which command names the navigation remote understands.",
-          "devices": "Projector, amplifier, screen, power switches — or an IR / RF **button**, script or scene that switches something on (it is pressed when the activity starts). Switches and players go off at Room Off (or when the next activity doesn't use them); a button can't be switched off, so put its matching **off** button on the room's Room Off lists. Media players can be sent to an input on the next page.",
+          "devices": "Switched on when the activity starts. A button / script is pressed. At Room Off (or when the next activity doesn't use them) they're switched off — a device switched on by a button needs its **turn off with** command on the next page, otherwise Home Assistant can't switch it off.",
           "power_on": "A script or scene to run as well. For lights, delays and more, use the next pages.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
         }
       },
       "edit_activity": {
-        "title": "Edit {activity}",
+        "title": "{activity} — step 1 of 4: devices",
         "data": {
           "name": "Activity name",
           "kind": "Type",
@@ -129,10 +131,11 @@
           "power_on": "Extra action when the activity starts (optional)"
         },
         "data_description": {
-          "devices": "Projector, amplifier, screen, power switches — or an IR / RF **button**, script or scene that switches something on (it is pressed when the activity starts). Switches and players go off at Room Off (or when the next activity doesn't use them); a button can't be switched off, so put its matching **off** button on the room's Room Off lists. Media players can be sent to an input on the next page.",
+          "devices": "Switched on when the activity starts. A button / script is pressed. At Room Off (or when the next activity doesn't use them) they're switched off — a device switched on by a button needs its **turn off with** command on the next page, otherwise Home Assistant can't switch it off.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
-        }
+        },
+        "description": "**Activity step 1 of 4: the devices.**\n\n• **Source**: what you watch or listen to (Apple TV, DStv, Spotify). The D-pad, OK and play keys control it.\n• **Volume device**: what the volume keys control (the amp / soundbar / TV).\n• **Also turn on**: everything else that must come on — projector, screen, subwoofer. Network devices, plugs / relays, or an IR / RF **button** that switches one on.\n\nNext page: which input each one goes to, and how button-controlled devices are switched off."
       },
       "pick_activity": {
         "title": "Edit an activity",
@@ -141,8 +144,8 @@
         }
       },
       "buttons": {
-        "title": "Buttons for {activity}",
-        "description": "The three custom buttons appear on screen. The colour keys are the red, green, blue and yellow hard buttons; their labels show on screen too.",
+        "title": "{activity} — step 4 of 4: buttons",
+        "description": "What the remote's buttons do while this activity runs. Leave any empty.\n\n• **Custom 1–3**: three buttons on the remote's screen — give each a name and an action.\n• **Red / Green / Blue / Yellow**: the coloured hard keys (their names show at the bottom of the screen).\n\nAn **action** can be a script, scene, button or automation (it runs), or a light / switch / fan (it toggles on and off). Tip: an automation runs its actions only — its trigger and conditions are skipped. To toggle a light, pick the light itself.\n\nNot working? The room's activity entity in Home Assistant shows **last_button**: what was pressed and what happened.",
         "data": {
           "custom1_label": "Custom 1 label",
           "custom1_action": "Custom 1 action",
@@ -167,13 +170,13 @@
         }
       },
       "sources": {
-        "title": "Inputs for {activity}",
-        "description": "Pick what each device switches to when the activity starts. Leave a field empty and that device is left as it is.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}\n\nThe lists come from exactly these entities. **Inputs missing** (e.g. Game, Bluetooth)? Check the entity above is the one you see the full list on in Home Assistant — a receiver often has several (Denon AVR, HEOS, Zone 2) and HEOS / Zone 2 report fewer inputs. Go **back** and pick the other entity, or type the input exactly as Home Assistant shows it and press Enter.",
+        "title": "{activity} — step 2 of 4: inputs, volume and power off",
+        "description": "**What happens when the activity starts:** every device switches on → the remote waits (the **wait** below) so they can wake up → then each device is sent to its input and the volume is set. A device already on the right input is left alone. Leave a field empty to leave that device as it is.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}\n\n**Input missing** (e.g. Game)? A receiver often has several entities (Denon AVR, HEOS, Zone 2) — the inputs of all of them are listed, and the right one is used. Still missing? Type it exactly as Home Assistant shows it and press Enter.\n\n**Turn off with:** for anything switched on by a button (IR projector, screen), pick its **off** button / script. Room Off uses it instead of the on-button. Leave empty for network devices and plugs — they switch off by themselves.",
         "data": {
           "source_input": "Source — app or input to open (empty = leave it)",
           "input": "Volume device — input to switch to (empty = stays on whatever it's on)",
           "start_volume": "Volume device — set the volume to (empty = don't change)",
-          "input_delay": "Wait before switching inputs and volume"
+          "input_delay": "Wait after switching on, before inputs and volume"
         },
         "data_description": {
           "input": "Only if the amp / soundbar also switches the picture or sound source, e.g. a Denon set to GAME or TV AUDIO. Leave empty if it should just stay where it is.",
@@ -182,8 +185,8 @@
         }
       },
       "actions": {
-        "title": "What else {activity} does",
-        "description": "Optional. Pick devices to switch off or pulse at the top — each gets its own timer on the next page. Below, build anything else like an HA script: other devices and sources, dim or colour lights, delays between steps (e.g. wait 2 s).",
+        "title": "{activity} — step 3 of 4: what else happens",
+        "description": "Optional — leave it all empty if the devices on step 1 are enough.\n\n• **Turn off when the activity starts**: things that may be on but must be off (room lights, another TV).\n• **Turn on for a few seconds, then off**: e.g. a light while everything powers up, or a screen-drop relay.\nBoth get their own time per device on the next page.\n\n• **When the activity starts / ends**: anything else, built like an HA script (dim lights to 20 %, close curtains, wait 2 s …).",
         "data": {
           "start_actions": "When the activity starts",
           "stop_actions": "When the activity ends (switching away or Room Off)",
@@ -244,11 +247,11 @@
         }
       },
       "room_timers": {
-        "title": "Room Off timers for {room}",
-        "description": "How long each device keeps running after Room Off before it switches itself off. Every device has its own time. The timers survive a Home Assistant restart."
+        "title": "{room} — step 2 of 2: Room Off timers",
+        "description": "How many minutes each device keeps running after Room Off before it switches itself off. A device switched on by a button uses its **turn off with** command (set on the activity's step 2). Timers survive a Home Assistant restart. Starting an activity that uses the device cancels its timer."
       },
       "timers": {
-        "title": "Timers for {activity}",
+        "title": "{activity} — step 3b: timers",
         "description": "One time per device, in seconds. **Turn off after**: how long after the activity starts it goes off (0 = straight away). **Stay on for**: how long the device stays on before it switches itself off."
       }
     },

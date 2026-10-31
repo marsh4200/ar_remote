@@ -103,6 +103,19 @@ OFF_PICK_DOMAINS = [
 ]
 
 
+# What can switch a device off: an IR/RF "off" button, a script, or a plug / relay.
+OFF_COMMAND_DOMAINS = [
+    "button", "input_button", "script", "scene", "switch", "light", "remote",
+    "input_boolean", "media_player",
+]
+
+# A colour / custom key can run something or toggle a device directly.
+SLOT_DOMAINS = [
+    "script", "scene", "button", "input_button", "automation",
+    "light", "switch", "fan", "input_boolean", "cover", "media_player",
+]
+
+
 def _timed(items: Any) -> list[dict]:
     """A stored per-device timer list, junk dropped."""
     if not isinstance(items, list):
@@ -198,6 +211,7 @@ class ArRemoteComposer(OptionsFlow):
         self._act_id: str | None = None
         self._device_keys: dict[str, str] = {}
         self._timer_keys: dict[str, tuple[str, str]] = {}
+        self._off_keys: dict[str, str] = {}
 
     # ----------------------------------------------------------------- helpers
 
@@ -506,12 +520,13 @@ class ArRemoteComposer(OptionsFlow):
             act[key] = value.strip() if isinstance(value, str) and value.strip() else None
         # Extra devices: keep the input already chosen for any device still listed.
         # The source and volume device are handled by their own fields.
-        chosen = {d["entity"]: d.get("source") for d in _devices(act)}
+        chosen = {d["entity"]: d for d in _devices(act)}
         skip = {act.get("source"), act.get("volume")}
         devices: list[dict] = []
         for eid in data.get("devices") or []:
             if eid and eid not in skip and all(d["entity"] != eid for d in devices):
-                devices.append({"entity": eid, "source": chosen.get(eid)})
+                prev = chosen.get(eid) or {}
+                devices.append({"entity": eid, "source": prev.get("source"), "off": prev.get("off")})
         act["devices"] = devices
         act.setdefault("slots", {})
 
@@ -678,8 +693,19 @@ class ArRemoteComposer(OptionsFlow):
             keys[key] = eid
         return keys
 
+    def _device_off_keys(self, act: dict) -> dict[str, str]:
+        """Form field name -> device, one 'turn off with' per Also-turn-on device."""
+        keys: dict[str, str] = {}
+        for dev in _devices(act):
+            eid = dev["entity"]
+            key = f"{self._name_of(eid)} — turn off with (optional)"
+            if key in keys:
+                key = f"{self._name_of(eid)} ({eid}) — turn off with (optional)"
+            keys[key] = eid
+        return keys
+
     async def async_step_sources(self, user_input: dict | None = None) -> ConfigFlowResult:
-        """Pick inputs from what the source, amp and extra devices actually offer."""
+        """Step 2: inputs, volume, the wake-up wait, and how each device is switched off."""
         act = self._activity(self._room_id, self._act_id)
         if act is None:
             return await self.async_step_init()
@@ -696,6 +722,9 @@ class ArRemoteComposer(OptionsFlow):
             for key, eid in self._device_keys.items():
                 value = user_input.get(key)
                 devices[eid]["source"] = value.strip() if isinstance(value, str) and value.strip() else None
+            for key, eid in self._off_keys.items():
+                value = user_input.get(key)
+                devices[eid]["off"] = value if isinstance(value, str) and "." in value and value != eid else None
             return await self.async_step_actions()
 
         fields: dict = {}
@@ -705,20 +734,23 @@ class ArRemoteComposer(OptionsFlow):
                 continue
             marker, selector = self._input_field(key, entity, act.get(key))
             fields[marker] = selector
-        if fields or act.get("volume"):
-            fields[vol.Required("input_delay", default=_number(act.get("input_delay"), 7))] = NumberSelector(
-                NumberSelectorConfig(min=0, max=60, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
-            )
+        self._device_keys = self._device_input_keys(act)
+        for key, eid in self._device_keys.items():
+            marker, selector = self._input_field(key, eid, devices[eid].get("source"))
+            fields[marker] = selector
         if act.get("volume"):
             fields[_opt("start_volume", act)] = NumberSelector(
                 NumberSelectorConfig(min=0, max=100, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="%")
             )
         else:
             act["start_volume"] = None
-        self._device_keys = self._device_input_keys(act)
-        for key, eid in self._device_keys.items():
-            marker, selector = self._input_field(key, eid, devices[eid].get("source"))
-            fields[marker] = selector
+        if fields:
+            fields[vol.Required("input_delay", default=_number(act.get("input_delay"), 7))] = NumberSelector(
+                NumberSelectorConfig(min=0, max=60, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
+            )
+        self._off_keys = self._device_off_keys(act)
+        for key, eid in self._off_keys.items():
+            fields[_opt(key, {key: devices[eid].get("off")})] = _ent(OFF_COMMAND_DOMAINS)
         if not fields:
             return await self.async_step_actions()
         return self.async_show_form(
@@ -835,7 +867,7 @@ class ArRemoteComposer(OptionsFlow):
             current = slots.get(slot, {})
             fields[_opt(f"{slot}_label", {f"{slot}_label": current.get("label")})] = TextSelector()
             fields[_opt(f"{slot}_action", {f"{slot}_action": current.get("action")})] = _ent(
-                ACTION_DOMAINS
+                SLOT_DOMAINS
             )
         return self.async_show_form(
             step_id="buttons",
