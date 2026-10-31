@@ -227,7 +227,8 @@
           "key_STOP": "⏹ key (music icon)",
           "key_STOP_action": "⏹ key — action (when set to Run an action)",
           "key_FASTFORWARD": "⏩ key (aircon icon)",
-          "key_FASTFORWARD_action": "⏩ key — action (when set to Run an action)"
+          "key_FASTFORWARD_action": "⏩ key — action (when set to Run an action)",
+          "clock_for": "Keep the clock on for"
         },
         "data_description": {
           "logo": "e.g. `/local/logo.png`. Clear it (and don't upload) for the built-in A&R Smart Home logo.",
@@ -238,7 +239,8 @@
           "clock": "Your logo as a clock face. On the charger, the screen stays on and the clock appears instead of going dark; any key or tap goes back. Always also shows it off the charger (keeps the screen on — uses a lot of battery).",
           "installer_pin": "Protects **Installer settings** on the remote's pull-down panel (Android settings, restart, updates). Leave empty to keep the current PIN. Only a hash is stored.",
           "clock_x": "Leave both empty for automatic (the A&R logo's circle, or the middle of another logo). For the A&R logo the circle is at 50.4 % across, 37.1 % down.",
-          "key_REWIND": "What the four media keys do. By default each opens the screen its icon shows. **Play controls** is the old behaviour (rewind / play / stop / forward on the source). **Run an action** runs the script, scene or button picked below it, on any screen."
+          "key_REWIND": "What the four media keys do. By default each opens the screen its icon shows. **Play controls** is the old behaviour (rewind / play / stop / forward on the source). **Run an action** runs the script, scene or button picked below it, on any screen.",
+          "clock_for": "How long the logo clock keeps the screen on before it goes dark like normal (also on the charger). Any key, a tap or picking the remote up brings it back."
         }
       },
       "copy_activity": {
@@ -299,6 +301,15 @@
         "comfort": "Open Comfort / aircon",
         "transport": "Play controls (rewind / play / stop / forward)",
         "action": "Run an action"
+      }
+    },
+    "clock_for": {
+      "options": {
+        "15": "15 seconds",
+        "30": "30 seconds",
+        "60": "1 minute",
+        "300": "5 minutes",
+        "0": "Always on"
       }
     }
   },

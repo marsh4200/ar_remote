@@ -10,7 +10,7 @@ val keystorePass = System.getenv("AR_KEYSTORE_PASSWORD") ?: "arremote"
 val keyAliasName = System.getenv("AR_KEY_ALIAS") ?: "arremote"
 val keyPass = System.getenv("AR_KEY_PASSWORD") ?: "arremote"
 
-val appVersionName = System.getenv("AR_VERSION_NAME") ?: "2.6.2"
+val appVersionName = System.getenv("AR_VERSION_NAME") ?: "2.6.4"
 // Android refuses an update whose versionCode is lower than the installed one
 // ("version downgrade"), so the code comes from the version itself:
 // 2.3.3 -> 20303xxx, where xxx is the CI run number (so rebuilds of the same

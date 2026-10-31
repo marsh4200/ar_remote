@@ -343,6 +343,13 @@ class PinScreen(host: Host, back: Screen?, private val onOk: () -> Unit) : Panel
 class InstallerScreen(host: Host, back: Screen?) : PanelScreen(host, back) {
     override val name = "installer"
 
+    /** "Reset for a new site" needs a second tap within a few seconds. */
+    private var resetArmedAt = -RESET_CONFIRM_MS
+
+    private companion object {
+        const val RESET_CONFIRM_MS = 5_000L
+    }
+
     override fun build(): View {
         val a = app
         val parts = mutableListOf<View>(header("Settings", "Installer settings") { close() })
@@ -350,6 +357,21 @@ class InstallerScreen(host: Host, back: Screen?) : PanelScreen(host, back) {
         parts += row(R.drawable.ic_wifi, "Wi-Fi", a.wifi.currentSsid() ?: "Not connected", tag = "inst-wifi") { host.show(WifiScreen(host, this)) }
         parts += row(R.drawable.ic_power, "Restart AR Remote", "Closes and reopens the app", tag = "inst-restart") { a.restartApp() }
         parts += row(R.drawable.ic_down, "Check for app update", "Downloads the latest release and asks to install", tag = "inst-update") { a.checkForUpdate() }
+        val armed = android.os.SystemClock.uptimeMillis() - resetArmedAt < RESET_CONFIRM_MS
+        parts += row(
+            R.drawable.ic_power,
+            if (armed) "Tap again to reset" else "Reset for a new site",
+            if (armed) "Clears the Home Assistant link, rooms, logos and settings, then restarts"
+            else "Forget this site: Home Assistant link, rooms, logos, settings. Wi-Fi stays.",
+            tint = Palette.danger, tag = "inst-reset",
+        ) {
+            if (android.os.SystemClock.uptimeMillis() - resetArmedAt < RESET_CONFIRM_MS) {
+                a.resetForNewSite()
+            } else {
+                resetArmedAt = android.os.SystemClock.uptimeMillis()
+                host.refreshNow()
+            }
+        }
         parts += row(
             R.drawable.ic_home, "Pairing address",
             "${a.ipAddress()}:${MainActivity.PORT}  ·  enter this when adding the remote in Home Assistant\n" +

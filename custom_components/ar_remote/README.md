@@ -77,6 +77,10 @@ Transport keys fall back to the source media player when the set has no command.
 
 - Every Also-turn-on device can have a **turn off with** command (activity step 2): an IR "projector off"
   button, a script or a plug. Room Off and timers use it instead of the on-button.
+- **Reset for a new site** (remote → Installer settings, tap twice): forgets the Home Assistant link, rooms,
+  logos and settings-panel choices and restarts on the setup screen. Wi-Fi and permissions stay.
+- **Keep the clock on for** (Remote settings): 15 s, 30 s, 1 min, 5 min or always — after that the screen goes
+  dark normally, even on the charger.
 - **Show what's playing from** (activity step 1): take the title and picture from another entity, e.g. the TV's
   Google Cast entity, when the source (Android TV Remote) doesn't report them.
 - A colour / custom button press shows what happened on the remote's screen ("Yellow ✓" or the reason it didn't run).
@@ -195,7 +199,7 @@ the password, connect), Home Assistant status and the app version. Swipe up from
 the bottom, press Back or the ⌃ button to close it.
 
 **Installer settings** (Android settings, restart, check for update, pairing
-address) are behind the PIN you set in Home Assistant → AR Remote → Configure →
+address, **reset for a new site**) are behind the PIN you set in Home Assistant → AR Remote → Configure →
 **Remote settings**. Only a hash of the PIN is stored.
 
 First start at a new house: the setup screen has a **Connect to Wi-Fi** button, so

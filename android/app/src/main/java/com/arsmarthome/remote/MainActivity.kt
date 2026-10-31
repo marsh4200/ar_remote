@@ -448,6 +448,22 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
+    /** Installer settings → Reset for a new site: wipe everything site-specific and restart. */
+    fun resetForNewSite() {
+        try {
+            store.wipe(filesDir)
+        } catch (e: Exception) {
+            Log.w(HaLink.TAG, "reset: ${e.message}")
+        }
+        // Touch sounds back to off, like a fresh install.
+        try {
+            if (Settings.System.canWrite(this)) {
+                Settings.System.putInt(contentResolver, Settings.System.SOUND_EFFECTS_ENABLED, 0)
+            }
+        } catch (_: Exception) {}
+        restartApp() // starts on the setup screen: pairing address and Wi-Fi
+    }
+
     fun checkForUpdate() {
         try { updater.install(APK_URL) } catch (e: Exception) { toast(e.message ?: "Update already running") }
     }
@@ -629,20 +645,39 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         else -> false
     }
 
-    /** On the charger the screen stays on (the clock takes over instead of going dark). */
+    /** When the clock was put up, and whether its "keep on for" time has run out. */
+    private var clockShownAt = 0L
+    private var clockDone = false
+    private var clockDoneAt = 0L
+
+    /** On the charger the screen stays on (the clock takes over instead of going dark) —
+     *  until the clock's "keep on for" time runs out. */
     private fun updateKeepOn() {
-        if (clockWanted()) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (clockWanted() && !clockDone) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private val idleWatch = object : Runnable {
         override fun run() {
-            val idle = SystemClock.uptimeMillis() - lastInput
+            val now = SystemClock.uptimeMillis()
+            val idle = now - lastInput
             val o = overlay
-            if (clockWanted() && idle >= settings.clockAfter * 1000L && o !is ClockView && o !is SplashView &&
-                screen !is SetupScreen
+            // A key, a tap or the charger since the clock timed out: start over.
+            if (clockDone && lastInput > clockDoneAt) {
+                clockDone = false
+                updateKeepOn()
+            }
+            if (clockWanted() && !clockDone && idle >= settings.clockAfter * 1000L && o !is ClockView &&
+                o !is SplashView && screen !is SetupScreen
             ) {
                 showClock()
+            }
+            // "Keep the clock on for": let the screen go dark normally after that.
+            val limit = settings.clockFor
+            if (o is ClockView && !clockDone && limit > 0 && now - clockShownAt >= limit * 1000L) {
+                clockDone = true
+                clockDoneAt = now
+                updateKeepOn()
             }
             applyBrightness() // night dim starts / ends on its own
             main.postDelayed(this, 5000)
@@ -663,6 +698,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         val view = ClockView(this, logo, dial)
         view.alpha = 0f
         showOverlay(view)
+        clockShownAt = SystemClock.uptimeMillis()
         view.animate().alpha(1f).setDuration(600).start()
         applyBrightness() // dims while the clock is up
     }

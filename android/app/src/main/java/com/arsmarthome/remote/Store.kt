@@ -43,6 +43,19 @@ class Store(context: Context) {
         get() = prefs.getInt("brightness", 80)
         set(value) = prefs.edit().putInt("brightness", value.coerceIn(5, 100)).apply()
 
+    /**
+     * Ready for a new site: forget the Home Assistant link, the programmed rooms,
+     * the logo and activity logos, and every choice made on the settings panel.
+     * Wi-Fi and the app's permissions stay.
+     */
+    fun wipe(filesDir: File) {
+        prefs.edit().clear().commit()
+        for (name in listOf("project.json", "project.json.tmp", "logo.img", "logo.tmp")) {
+            File(filesDir, name).delete()
+        }
+        File(filesDir, "icons").deleteRecursively()
+    }
+
     fun loadProject(): Project? = try {
         if (projectFile.exists()) Project.parse(JSONObject(projectFile.readText())) else null
     } catch (e: Exception) {

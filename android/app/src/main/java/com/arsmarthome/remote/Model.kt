@@ -48,6 +48,8 @@ data class DeviceSettings(
     val clockY: Float? = null, // % down the logo
     /** ⏪ ⏵ ⏹ ⏩: lights | shades | music | comfort | transport | action. Empty = old play controls. */
     val keys: Map<String, String> = emptyMap(),
+    /** Seconds the clock keeps the screen on before it may go dark; 0 = always. */
+    val clockFor: Int = 0,
 ) {
     companion object {
         fun parse(d: JSONObject?): DeviceSettings {
@@ -63,6 +65,7 @@ data class DeviceSettings(
                 pinHash = d.optStr("pin_hash"),
                 clockX = if (d.isNull("clock_x") || !d.has("clock_x")) null else d.optDouble("clock_x").toFloat(),
                 clockY = if (d.isNull("clock_y") || !d.has("clock_y")) null else d.optDouble("clock_y").toFloat(),
+                clockFor = d.optInt("clock_for", 0).coerceIn(0, 86_400),
                 keys = d.optJSONObject("keys")?.let { o ->
                     o.keys().asSequence().associateWith { o.optString(it, "") }
                 } ?: emptyMap(),

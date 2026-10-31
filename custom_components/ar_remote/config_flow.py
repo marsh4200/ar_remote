@@ -312,6 +312,7 @@ class ArRemoteComposer(OptionsFlow):
                 }
             dev["clock"] = user_input.get("clock", "charging")
             dev["clock_after"] = int(user_input.get("clock_after", 30))
+            dev["clock_for"] = int(_number(user_input.get("clock_for"), 0))
             # Clock hands centre: both empty = automatic.
             cx, cy = user_input.get("clock_x"), user_input.get("clock_y")
             dev["clock_x"], dev["clock_y"] = (float(cx), float(cy)) if cx is not None and cy is not None else (None, None)
@@ -334,6 +335,9 @@ class ArRemoteComposer(OptionsFlow):
                 ),
                 vol.Required("clock_after", default=dev.get("clock_after", 30)): NumberSelector(
                     NumberSelectorConfig(min=10, max=600, step=10, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
+                ),
+                vol.Required("clock_for", default=str(int(_number(dev.get("clock_for"), 0)))): _select(
+                    ["15", "30", "60", "300", "0"], key="clock_for"
                 ),
                 _opt("clock_x", dev): NumberSelector(
                     NumberSelectorConfig(min=0, max=100, step=0.5, mode=NumberSelectorMode.SLIDER, unit_of_measurement="%")
