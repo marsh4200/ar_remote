@@ -128,11 +128,16 @@ async def test_composer_builds_room_activity_buttons(hass: HomeAssistant, client
         )
         assert flow["step_id"] == "sources"
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"input": "HDMI 2"})
-        assert flow["step_id"] == "actions"
+        assert flow["step_id"] == "start_steps"
         flow = await hass.config_entries.options.async_configure(
             flow["flow_id"],
-            {"start_actions": [{"action": "light.turn_on", "target": {"entity_id": "light.a"}}],
-             "turn_off_on_end": True},
+            {"step_1": {"entities": ["light.a"], "do": "dim", "level": 30, "wait": 2}},
+        )
+        assert flow["step_id"] == "end_steps"
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"],
+            {"advanced": {"start_actions": [{"action": "light.turn_on", "target": {"entity_id": "light.a"}}],
+                          "turn_off_on_end": True}},
         )
         assert flow["step_id"] == "buttons"
         flow = await hass.config_entries.options.async_configure(
@@ -148,6 +153,7 @@ async def test_composer_builds_room_activity_buttons(hass: HomeAssistant, client
     assert act["slots"]["red"] == {"label": "Dim", "action": "script.dim"}
     assert act["input"] == "HDMI 2"
     assert act["start_actions"][0]["action"] == "light.turn_on"
+    assert act["start_steps"] == [{"entities": ["light.a"], "do": "dim", "level": 30, "wait": 2.0}]
 
 
 async def test_setup_programs_and_entities(hass: HomeAssistant, client) -> None:
@@ -351,8 +357,9 @@ async def test_also_turn_on_devices_in_composer(hass: HomeAssistant, client) -> 
         flow = await hass.config_entries.options.async_configure(
             flow["flow_id"], {"Projector input": "HDMI 2"},  # amp left empty: power on only
         )
-        assert flow["step_id"] == "actions"
-        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"turn_off_on_end": True})
+        assert flow["step_id"] == "start_steps"
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "save"})
     act = entry.options["project"]["rooms"][0]["activities"][0]
@@ -468,7 +475,8 @@ async def test_copy_activity_and_logo(hass: HomeAssistant, client) -> None:
         )
         assert flow["step_id"] == "sources"
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"source_input": "Prime Video", "media_player.projector input": "HDMI 2"})
-        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"turn_off_on_end": True})
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})  # start steps
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})  # off steps
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"red_label": "Lights", "red_action": "script.dim"})
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "save"})
     acts = entry.options["project"]["rooms"][0]["activities"]

@@ -125,6 +125,8 @@ class ArRemoteRuntime:
         self._locks: dict[str, asyncio.Lock] = {}
         # Per room: the "wait, then switch inputs" step of a starting activity.
         self._input_tasks: dict[str, asyncio.Task] = {}
+        # Per room: running start / off step sequences.
+        self._seq_tasks: dict[str, set[asyncio.Task]] = {}
         # Per room: what the last Room Off did (shown on the room's activity entity).
         self.last_room_off: dict[str, dict] = {}
         # Per room: the last custom / colour button press and what came of it.
@@ -203,6 +205,10 @@ class ArRemoteRuntime:
         for task in self._input_tasks.values():
             task.cancel()
         self._input_tasks.clear()
+        for tasks in self._seq_tasks.values():
+            for task in tasks:
+                task.cancel()
+        self._seq_tasks.clear()
 
     # ------------------------------------------------------------- sync logic
 
@@ -511,11 +517,98 @@ class ArRemoteRuntime:
 
     async def _activity_entities(self, room_id: str, act: dict) -> set[str]:
         """Everything the activity switches on: source, amp, extra devices, pulses, start-step targets."""
-        ents = self._core_entities(act) | self._pulse_entities(act)
+        ents = self._core_entities(act) | self._pulse_entities(act) | self._step_on_entities(act)
         script = await self._script(room_id, act, "start_actions")
         if script is not None:
             ents |= set(script.referenced_entities)
         return ents
+
+    # ------------------------------------------------------- step sequences
+
+    @staticmethod
+    def _steps(act: dict | None, key: str) -> list[dict]:
+        steps = (act or {}).get(key)
+        return [st for st in steps if isinstance(st, dict)] if isinstance(steps, list) else []
+
+    def _step_on_entities(self, act: dict) -> set[str]:
+        """What the start steps switch on (they go off at Room Off unless the off steps handle them)."""
+        return {
+            e for st in self._steps(act, "start_steps") if st.get("do") in ("on", "dim", "toggle")
+            for e in entity_list(st.get("entities"))
+        }
+
+    def _end_step_entities(self, act: dict | None) -> set[str]:
+        """What the off steps take care of themselves (Room Off leaves these to them)."""
+        return {e for st in self._steps(act, "end_steps") for e in entity_list(st.get("entities"))}
+
+    @callback
+    def _cancel_sequences(self, room_id: str) -> None:
+        for task in self._seq_tasks.pop(room_id, set()):
+            if not task.done():
+                task.cancel()
+
+    @callback
+    def _start_sequence(self, room_id: str, act: dict, key: str, skip: set[str] | None = None) -> None:
+        steps = self._steps(act, key)
+        if skip:
+            # Switching to another activity: leave alone what the new one uses.
+            steps = [
+                {**st, "entities": [e for e in entity_list(st.get("entities")) if e not in skip]}
+                for st in steps
+            ]
+        if not steps:
+            return
+        task = self.hass.async_create_task(
+            self._run_steps(act.get("name") or "", key, steps), f"ar_remote {key}"
+        )
+        tasks = self._seq_tasks.setdefault(room_id, set())
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
+
+    async def _run_steps(self, name: str, key: str, steps: list[dict]) -> None:
+        """Run the steps top to bottom: do the step to its devices, then wait."""
+        try:
+            for i, st in enumerate(steps, 1):
+                for eid in entity_list(st.get("entities")):
+                    try:
+                        await self._do_step(eid, st.get("do") or "on", st.get("level"))
+                    except Exception:  # noqa: BLE001 - one device must not stop the rest
+                        _LOGGER.exception("AR Remote: %s %s step %s failed on %s", name, key, i, eid)
+                wait = seconds(st.get("wait"))
+                if wait > 0:
+                    await asyncio.sleep(wait)
+        except asyncio.CancelledError:
+            _LOGGER.debug("AR Remote: %s %s stopped (room off / another activity)", name, key)
+            raise
+
+    async def _do_step(self, entity_id: str, do: str, level: Any) -> None:
+        domain = entity_id.split(".", 1)[0]
+        if do == "off":
+            await self._explicit_off(entity_id)
+        elif do == "press":
+            await self.run_action(entity_id)
+        elif do == "toggle":
+            if domain in PRESS_DOMAINS:
+                await self.run_action(entity_id)
+            else:
+                await self._call("homeassistant", "toggle", entity_id)
+        elif do == "dim":
+            pct = max(1, min(100, int(seconds(level, 50) or 50)))
+            if domain == "light":
+                await self._call("light", "turn_on", entity_id, {"brightness_pct": pct})
+            elif domain == "cover":
+                await self._call("cover", "set_cover_position", entity_id, {"position": pct})
+            elif domain == "media_player":
+                await self._call("media_player", "volume_set", entity_id, {"volume_level": round(pct / 100, 2)})
+            elif domain == "fan":
+                await self._call("fan", "set_percentage", entity_id, {"percentage": pct})
+            else:
+                await self._turn_on(entity_id)
+        else:  # on
+            if domain == "cover":
+                await self._call("cover", "open_cover", entity_id)
+            else:
+                await self._turn_on(entity_id)
 
     def _run(self, script: Script | None) -> None:
         if script is not None:
@@ -652,17 +745,26 @@ class ArRemoteRuntime:
         for eid in sorted(press):
             await self.run_action(eid)
 
-    async def _end_activity(self, room_id: str, act: dict, keep: set[str], report: dict | None = None) -> set[str]:
+    async def _end_activity(
+        self, room_id: str, act: dict, keep: set[str], report: dict | None = None,
+        seq_skip: set[str] | None = None,
+    ) -> set[str]:
         """Stop the start sequence, run the stop sequence, switch off what it used."""
         start = await self._script(room_id, act, "start_actions")
         if start is not None and start.is_running:
             await start.async_stop()
         self._run(await self._script(room_id, act, "stop_actions"))
+        # The "when it's switched off" steps run in the background and look after
+        # their own devices, so those aren't switched off here.
+        self._start_sequence(room_id, act, "end_steps", skip=seq_skip or set())
+        keep = keep | self._end_step_entities(act)
         if act.get("turn_off_on_end", True):
             off = await self._activity_entities(room_id, act) - keep
         else:
             off = (self._core_entities(act) | self._pulse_entities(act)) - keep
         await self._power_off(room_id, off, report)
+        if report is not None and self._steps(act, "end_steps"):
+            report["off_steps"] = f"{len(self._steps(act, 'end_steps'))} step(s) running"
         return off
 
     def _lock(self, room_id: str) -> asyncio.Lock:
@@ -684,8 +786,11 @@ class ArRemoteRuntime:
         # something this activity is about to use.
         self._cancel_timers(room_id, uses)
         self._cancel_inputs(room_id)
+        self._cancel_sequences(room_id)  # an earlier start / off script stops here
         if old and old["id"] != new["id"]:
-            await self._end_activity(room_id, old, uses)
+            await self._end_activity(room_id, old, uses, seq_skip=uses)
+        # The "when it starts" steps: from the first second, alongside the devices.
+        self._start_sequence(room_id, new, "start_steps")
 
         # 1. Things that must go off when this activity starts (now, or after N s).
         for item in timed_list(new.get("off_on_start")):
@@ -807,8 +912,9 @@ class ArRemoteRuntime:
         room_id = room["id"]
         async with self._lock(room_id):
             delayed = self.room_off_delayed(room)
-            hold = set(delayed)
             current = self.activity(room_id, self.current.get(room_id))
+            # Devices the activity's "when it's switched off" steps handle are left to them.
+            hold = set(delayed) | self._end_step_entities(current)
             rest = self.room_off_entities(room)
             handled = rest | hold
             if current:
@@ -817,6 +923,7 @@ class ArRemoteRuntime:
             # or an input switch still waiting to run.
             self._cancel_timers(room_id, handled)
             self._cancel_inputs(room_id)
+            self._cancel_sequences(room_id)
 
             report: dict[str, Any] = {"at": dt_util.now().isoformat(timespec="seconds")}
             done: set[str] = set()

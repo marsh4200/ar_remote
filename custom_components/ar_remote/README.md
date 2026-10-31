@@ -73,6 +73,16 @@ expects: `apple_tv`, `android_tv`, `roku`, `samsung_tv`, `lg_webos`,
 `ir_generic` (Broadlink / IR learned codes named `up`, `down`, `ok`, `back` …).
 Transport keys fall back to the source media player when the set has no command.
 
+## Changes in 2.7.0
+
+- **Activity sequences**, like a script, on one page each: **step 3 "When it starts"** and **step 4 "When it's
+  switched off"**. Up to 8 steps per page; each step is *devices → do (on / off / dim to % / toggle / press or run)
+  → then wait*. Start steps run from the first second alongside the devices; off steps run at Room Off / the power
+  key or when switching activity, and look after their own devices. Room Off or a new activity stops a sequence
+  that's still running. The old "turn off when it starts" / "on for a few seconds" lists and the timers page are
+  folded into the steps (existing settings are copied in automatically). The HA script editor is still there,
+  under *Advanced* on step 4.
+
 ## Changes in 2.6.0
 
 - Every Also-turn-on device can have a **turn off with** command (activity step 2): an IR "projector off"

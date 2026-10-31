@@ -121,6 +121,17 @@ SLOT_DOMAINS = [
 ]
 
 
+# Activity step sequences (start / switched off).
+STEP_COUNT = 8
+DO_OPTIONS = ["on", "off", "dim", "toggle", "press"]
+STEP_LABELS = {"entities": "devices", "do": "do", "level": "level (%)", "wait": "then wait (s)"}
+
+try:  # form sections (Home Assistant 2024.8+): one box per step
+    from homeassistant.data_entry_flow import section
+except ImportError:  # pragma: no cover - older Home Assistant: flat fields
+    section = None
+
+
 def _timed(items: Any) -> list[dict]:
     """A stored per-device timer list, junk dropped."""
     if not isinstance(items, list):
@@ -777,86 +788,145 @@ class ArRemoteComposer(OptionsFlow):
             },
         )
 
+    # ------------------------------------------------------- step sequences
+
+    def _steps_fields(self, steps: list[dict]) -> dict:
+        """STEP_COUNT steps: devices · do · level · then wait — one box (section) each."""
+        fields: dict = {}
+        for i in range(STEP_COUNT):
+            st = steps[i] if i < len(steps) else {}
+            inner = {
+                "entities": (st.get("entities") or [], _any(multiple=True)),
+                "do": (st.get("do") if st.get("do") in DO_OPTIONS else "on", _select(DO_OPTIONS, key="step_do")),
+                "level": (st.get("level"), NumberSelector(NumberSelectorConfig(
+                    min=1, max=100, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="%"))),
+                "wait": (_number(st.get("wait"), 0), NumberSelector(NumberSelectorConfig(
+                    min=0, max=3600, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s"))),
+            }
+            used = bool(st.get("entities")) or _number(st.get("wait"), 0) > 0
+            if section is not None:
+                sub = {}
+                for key, (value, selector) in inner.items():
+                    if key in ("do", "wait"):
+                        sub[vol.Required(key, default=value)] = selector
+                    else:
+                        sub[_opt(key, {key: value})] = selector
+                fields[vol.Optional(f"step_{i + 1}")] = section(
+                    vol.Schema(sub), {"collapsed": not used and i > 0}
+                )
+            else:  # Home Assistant without form sections: flat fields
+                for key, (value, selector) in inner.items():
+                    name = f"Step {i + 1} — {STEP_LABELS[key]}"
+                    if key in ("do", "wait"):
+                        fields[vol.Required(name, default=value)] = selector
+                    else:
+                        fields[_opt(name, {name: value})] = selector
+        return fields
+
+    @staticmethod
+    def _parse_steps(user_input: dict) -> list[dict]:
+        steps: list[dict] = []
+        for i in range(STEP_COUNT):
+            data = user_input.get(f"step_{i + 1}")
+            if not isinstance(data, dict):
+                data = {key: user_input.get(f"Step {i + 1} — {label}") for key, label in STEP_LABELS.items()}
+            ents = data.get("entities") or []
+            if isinstance(ents, str):
+                ents = [ents]
+            ents = [e for e in dict.fromkeys(ents) if isinstance(e, str) and "." in e]
+            wait = max(0.0, min(3600.0, _number(data.get("wait"), 0)))
+            if not ents and wait <= 0:
+                continue  # empty step
+            level = data.get("level")
+            steps.append({
+                "entities": ents,
+                "do": data.get("do") if data.get("do") in DO_OPTIONS else "on",
+                "level": max(1, min(100, int(_number(level, 50)))) if level not in (None, "") else None,
+                "wait": wait,
+            })
+        return steps
+
+    @staticmethod
+    def _legacy_start_steps(act: dict) -> list[dict]:
+        """Turn the old 'turn off when it starts' / 'on for a few seconds' lists into steps."""
+        steps: list[dict] = []
+        pulses = _timed(act.get("pulse"))
+        offs_now = [d["entity"] for d in _timed(act.get("off_on_start")) if _number(d.get("after"), 0) <= 0]
+        if pulses:
+            longest = max(_number(d.get("seconds"), 5) for d in pulses)
+            steps.append({"entities": [d["entity"] for d in pulses], "do": "on", "level": None, "wait": 0})
+        if offs_now:
+            steps.append({"entities": offs_now, "do": "off", "level": None, "wait": 0})
+        if pulses:
+            steps[-1]["wait"] = longest
+            steps.append({"entities": [d["entity"] for d in pulses], "do": "off", "level": None, "wait": 0})
+        elapsed = sum(st["wait"] for st in steps)
+        for d in sorted(_timed(act.get("off_on_start")), key=lambda d: _number(d.get("after"), 0)):
+            after = _number(d.get("after"), 0)
+            if after <= 0:
+                continue
+            if after > elapsed:
+                steps.append({"entities": [], "do": "on", "level": None, "wait": after - elapsed})
+                elapsed = after
+            steps.append({"entities": [d["entity"]], "do": "off", "level": None, "wait": 0})
+        return steps[:STEP_COUNT]
+
     async def async_step_actions(self, user_input: dict | None = None) -> ConfigFlowResult:
-        """Extra things the activity does: lights, switches, other devices, delays."""
+        """Old name of step 3 (kept so every route into it still works)."""
+        return await self.async_step_start_steps(user_input)
+
+    async def async_step_start_steps(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """Step 3: what happens when the activity starts — a script of steps."""
         act = self._activity(self._room_id, self._act_id)
         if act is None:
             return await self.async_step_init()
         if user_input is not None:
-            act["start_actions"] = list(user_input.get("start_actions") or [])
-            act["stop_actions"] = list(user_input.get("stop_actions") or [])
-            act["turn_off_on_end"] = bool(user_input.get("turn_off_on_end", True))
-            # Keep the times already set for devices still listed.
-            after = {d["entity"]: d.get("after") for d in _timed(act.get("off_on_start"))}
-            pulse = {d["entity"]: d.get("seconds") for d in _timed(act.get("pulse"))}
-            act["off_on_start"] = [
-                {"entity": eid, "after": after.get(eid) or 0}
-                for eid in dict.fromkeys(user_input.get("off_on_start") or []) if eid
-            ]
-            act["pulse"] = [
-                {"entity": eid, "seconds": pulse.get(eid) or 5}
-                for eid in dict.fromkeys(user_input.get("pulse") or []) if eid
-            ]
-            return await self.async_step_timers()
-        schema = vol.Schema(
-            {
-                _opt("off_on_start", {"off_on_start": [d["entity"] for d in _timed(act.get("off_on_start"))]}, []): _any(multiple=True),
-                _opt("pulse", {"pulse": [d["entity"] for d in _timed(act.get("pulse"))]}, []): _ent(
-                    DEVICE_DOMAINS, multiple=True
-                ),
-                _opt("start_actions", act, []): ActionSelector(ActionSelectorConfig()),
-                _opt("stop_actions", act, []): ActionSelector(ActionSelectorConfig()),
-                vol.Required("turn_off_on_end", default=act.get("turn_off_on_end", True)): BooleanSelector(),
-            }
-        )
+            act["start_steps"] = self._parse_steps(user_input)
+            # The old lists now live in the steps above.
+            act["off_on_start"], act["pulse"] = [], []
+            return await self.async_step_end_steps()
+        steps = act.get("start_steps")
+        if not isinstance(steps, list) or (not steps and (act.get("off_on_start") or act.get("pulse"))):
+            steps = self._legacy_start_steps(act)
         return self.async_show_form(
-            step_id="actions",
-            data_schema=schema,
+            step_id="start_steps",
+            data_schema=vol.Schema(self._steps_fields(steps)),
+            description_placeholders={"activity": act["name"]},
+        )
+
+    async def async_step_end_steps(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """Step 4: what happens when the activity is switched off — a script of steps."""
+        act = self._activity(self._room_id, self._act_id)
+        if act is None:
+            return await self.async_step_init()
+        if user_input is not None:
+            act["end_steps"] = self._parse_steps(user_input)
+            adv = user_input.get("advanced") if isinstance(user_input.get("advanced"), dict) else user_input
+            act["start_actions"] = list(adv.get("start_actions") or [])
+            act["stop_actions"] = list(adv.get("stop_actions") or [])
+            act["turn_off_on_end"] = bool(adv.get("turn_off_on_end", True))
+            return await self.async_step_buttons()
+        steps = act.get("end_steps") if isinstance(act.get("end_steps"), list) else []
+        fields = self._steps_fields(steps)
+        adv = {
+            _opt("start_actions", act, []): ActionSelector(ActionSelectorConfig()),
+            _opt("stop_actions", act, []): ActionSelector(ActionSelectorConfig()),
+            vol.Required("turn_off_on_end", default=act.get("turn_off_on_end", True)): BooleanSelector(),
+        }
+        if section is not None:
+            has_script = bool(act.get("start_actions") or act.get("stop_actions"))
+            fields[vol.Optional("advanced")] = section(vol.Schema(adv), {"collapsed": not has_script})
+        else:
+            fields.update(adv)
+        return self.async_show_form(
+            step_id="end_steps",
+            data_schema=vol.Schema(fields),
             description_placeholders={"activity": act["name"]},
         )
 
     async def async_step_timers(self, user_input: dict | None = None) -> ConfigFlowResult:
-        """A time for each device picked on the previous page."""
-        act = self._activity(self._room_id, self._act_id)
-        if act is None:
-            return await self.async_step_init()
-        offs, pulses = _timed(act.get("off_on_start")), _timed(act.get("pulse"))
-        if not offs and not pulses:
-            return await self.async_step_buttons()
-        if user_input is not None:
-            for key, (group, eid) in self._timer_keys.items():
-                value = user_input.get(key)
-                if group == "off_on_start":
-                    for item in offs:
-                        if item["entity"] == eid:
-                            item["after"] = max(0.0, _number(value, item.get("after") or 0))
-                else:
-                    for item in pulses:
-                        if item["entity"] == eid:
-                            item["seconds"] = max(0.5, _number(value, item.get("seconds") or 5))
-            act["off_on_start"], act["pulse"] = offs, pulses
-            return await self.async_step_buttons()
-
-        self._timer_keys = self._timer_field_keys(
-            [
-                ("off_on_start", "turn off after (0 = straight away)", [d["entity"] for d in offs]),
-                ("pulse", "stay on for, then off", [d["entity"] for d in pulses]),
-            ]
-        )
-        current = {
-            ("off_on_start", d["entity"]): _number(d.get("after"), 0) for d in offs
-        } | {("pulse", d["entity"]): _number(d.get("seconds"), 5) for d in pulses}
-        fields: dict = {}
-        for key, ref in self._timer_keys.items():
-            low = 0 if ref[0] == "off_on_start" else 0.5
-            fields[vol.Required(key, default=current.get(ref, low))] = NumberSelector(
-                NumberSelectorConfig(min=low, max=3600, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
-            )
-        return self.async_show_form(
-            step_id="timers",
-            data_schema=vol.Schema(fields),
-            description_placeholders={"activity": act["name"]},
-        )
+        """Old timers page: now part of the steps."""
+        return await self.async_step_start_steps()
 
     async def async_step_buttons(self, user_input: dict | None = None) -> ConfigFlowResult:
         act = self._activity(self._room_id, self._act_id)
