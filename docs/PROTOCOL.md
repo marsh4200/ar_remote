@@ -127,7 +127,7 @@ the screen is off). `/info` reports `wake_sensor`, `pickup` and `logo`.
 | `UP` `DOWN` `LEFT` `RIGHT` `CENTER` | 19 20 21 22 23 | D-pad command set on the activity's remote entity |
 | `BACK` | 4 | back / menu command |
 | `MAIN` | 82 | menu command |
-| `HOME` | 131 | app: home screen (never sent as device) |
+| `HOME` | 131 | on an activity screen with a navigation remote: short = `HOME` command (device home), long = app room page; elsewhere app home screen |
 | `POWER` | 132 | app: Room Off |
 | `VOICE` | 133 | event only |
 | `REWIND` `PLAY` `STOP` `FASTFORWARD` | 134 135 136 137 | per `device.keys`: screen shortcut (default), transport on the source, or an HA action |

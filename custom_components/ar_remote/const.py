@@ -52,35 +52,35 @@ COLOR_KEYS = {
 COMMAND_SETS: dict[str, dict[str, str]] = {
     "apple_tv": {
         "UP": "up", "DOWN": "down", "LEFT": "left", "RIGHT": "right",
-        "CENTER": "select", "BACK": "menu", "MAIN": "home",
+        "CENTER": "select", "BACK": "menu", "MAIN": "home", "HOME": "home",
         "REWIND": "skip_backward", "FASTFORWARD": "skip_forward",
         "PLAY": "play_pause",
     },
     "android_tv": {
         "UP": "DPAD_UP", "DOWN": "DPAD_DOWN", "LEFT": "DPAD_LEFT",
         "RIGHT": "DPAD_RIGHT", "CENTER": "DPAD_CENTER", "BACK": "BACK",
-        "MAIN": "MENU", "PAGE_UP": "CHANNEL_UP", "PAGE_DOWN": "CHANNEL_DOWN",
+        "MAIN": "MENU", "HOME": "HOME", "PAGE_UP": "CHANNEL_UP", "PAGE_DOWN": "CHANNEL_DOWN",
         "REWIND": "MEDIA_REWIND", "FASTFORWARD": "MEDIA_FAST_FORWARD",
         "PLAY": "MEDIA_PLAY_PAUSE", "STOP": "MEDIA_STOP",
     },
     "roku": {
         "UP": "up", "DOWN": "down", "LEFT": "left", "RIGHT": "right",
-        "CENTER": "select", "BACK": "back", "MAIN": "home",
+        "CENTER": "select", "BACK": "back", "MAIN": "home", "HOME": "home",
         "REWIND": "reverse", "FASTFORWARD": "forward", "PLAY": "play",
     },
     "samsung_tv": {
         "UP": "KEY_UP", "DOWN": "KEY_DOWN", "LEFT": "KEY_LEFT",
         "RIGHT": "KEY_RIGHT", "CENTER": "KEY_ENTER", "BACK": "KEY_RETURN",
-        "MAIN": "KEY_MENU", "PAGE_UP": "KEY_CHUP", "PAGE_DOWN": "KEY_CHDOWN",
+        "MAIN": "KEY_MENU", "HOME": "KEY_HOME", "PAGE_UP": "KEY_CHUP", "PAGE_DOWN": "KEY_CHDOWN",
     },
     "lg_webos": {
         "UP": "UP", "DOWN": "DOWN", "LEFT": "LEFT", "RIGHT": "RIGHT",
-        "CENTER": "ENTER", "BACK": "BACK", "MAIN": "MENU",
+        "CENTER": "ENTER", "BACK": "BACK", "MAIN": "MENU", "HOME": "HOME",
         "PAGE_UP": "CHANNELUP", "PAGE_DOWN": "CHANNELDOWN",
     },
     "ir_generic": {
         "UP": "up", "DOWN": "down", "LEFT": "left", "RIGHT": "right",
-        "CENTER": "ok", "BACK": "back", "MAIN": "menu",
+        "CENTER": "ok", "BACK": "back", "MAIN": "menu", "HOME": "home",
         "PAGE_UP": "channel_up", "PAGE_DOWN": "channel_down",
         "REWIND": "rewind", "FASTFORWARD": "fast_forward",
         "PLAY": "play", "STOP": "stop",

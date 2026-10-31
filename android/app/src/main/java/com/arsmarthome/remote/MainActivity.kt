@@ -730,6 +730,12 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
                 downAt[key] = SystemClock.uptimeMillis()
                 consumed.remove(key)
             }
+            // On a Watch / Listen screen with a navigation remote, Home is decided on
+            // release: short = the device's home (out of Netflix), long = the room page.
+            if (key == Key.HOME && homeGoesToDevice(s, act)) {
+                consumed += key
+                return true
+            }
             val route = routeFor(key, s, act)
             if (event.repeatCount > 0) {
                 if (route == "device" && key.repeats) {
@@ -763,6 +769,17 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         }
 
         if (event.action == KeyEvent.ACTION_UP) {
+            if (key == Key.HOME && homeGoesToDevice(s, act)) {
+                val held = downAt.remove(key)?.let { SystemClock.uptimeMillis() - it } ?: 0L
+                consumed.remove(key)
+                if (held >= LONG_PRESS_MS) {
+                    reportKey(key, event, "long", "ui", s, act)
+                    mainPage()
+                } else {
+                    reportKey(key, event, "short", "device", s, act)
+                }
+                return true
+            }
             val start = downAt.remove(key)
             if (start != null && SystemClock.uptimeMillis() - start >= LONG_PRESS_MS) {
                 reportKey(key, event, "long", "ui", s, act)
@@ -772,6 +789,10 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         }
         return super.dispatchKeyEvent(event)
     }
+
+    /** Short Home goes to the activity's device (e.g. Android TV home) instead of the room page. */
+    private fun homeGoesToDevice(s: Screen?, act: Activity?): Boolean =
+        s is ActivityScreen && act != null && act.hasDpad
 
     /** What a media key is set to in HA (Remote settings). */
     private fun keyMode(key: Key): String = settings.keys[key.name] ?: "transport"

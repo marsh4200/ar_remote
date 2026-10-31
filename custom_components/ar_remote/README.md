@@ -77,6 +77,8 @@ Transport keys fall back to the source media player when the set has no command.
 
 - Every Also-turn-on device can have a **turn off with** command (activity step 2): an IR "projector off"
   button, a script or a plug. Room Off and timers use it instead of the on-button.
+- Home on a Watch / Listen screen: short press = the device's home screen (Android TV, Apple TV, Roku …),
+  long press = back to the room page.
 - Settings panel: **Touch sounds** now switches Android's own tap / key sounds (it only added an extra
   click before). **Vibrate** only shows on remotes that have a vibration motor. **Night dim** shows its
   hours (22:00–06:00).
@@ -108,7 +110,7 @@ Transport keys fall back to the source media player when the set has no command.
 | --- | --- | --- |
 | D-pad, OK | moves the on-screen focus | navigation remote |
 | BACK | previous screen | back / menu command |
-| HOME | room home screen | room home screen |
+| HOME | room home screen (long press: settings panel) | **short**: the device's home screen (e.g. Android TV home, out of Netflix) · **long**: back to the room page |
 | POWER | Room Off | Room Off |
 | Volume, mute | the room's amp while an activity runs | the room's amp |
 | ⏪ ⏵ ⏹ ⏩ (light / curtain / music / aircon icons) | open Lights / Shades / Music / Comfort (default) — or play controls, or any action, per key under **Remote settings** | same |
