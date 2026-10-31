@@ -101,3 +101,18 @@ ACTION_DOMAINS = ["script", "scene", "button", "input_button", "automation"]
 DEVICE_DOMAINS = [
     "media_player", "remote", "switch", "light", "fan", "input_boolean", "siren",
 ]
+
+# Things that are pressed / run rather than switched: an IR "projector on"
+# button, a script, a scene. They can be in "Also turn on" and in the off lists
+# (a "projector off" button), but never get switched off themselves.
+PRESS_DOMAINS = ["button", "input_button", "script", "scene"]
+
+# The ⏪ ⏵ ⏹ ⏩ keys. On the Astrion they carry light / curtain / music / aircon
+# icons, so by default they open those screens.
+MEDIA_KEYS = {
+    "REWIND": "lights",
+    "PLAY": "shades",
+    "STOP": "music",
+    "FASTFORWARD": "comfort",
+}
+KEY_MODES = ["lights", "shades", "music", "comfort", "transport", "action"]

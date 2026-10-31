@@ -713,6 +713,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             val handled = when {
                 key == Key.HOME -> { mainPage(); true }
                 key == Key.POWER -> { roomOff(); true }
+                key.isTransport && openShortcut(key) -> true
                 route == "device" -> true
                 key.isVolume || key.isColor || key.isTransport -> true // never fall through to the system
                 s?.onKey(key, event) == true -> true
@@ -738,7 +739,38 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         return super.dispatchKeyEvent(event)
     }
 
+    /** What a media key is set to in HA (Remote settings). */
+    private fun keyMode(key: Key): String = settings.keys[key.name] ?: "transport"
+
+    /**
+     * The Astrion's ⏪ ⏵ ⏹ ⏩ keys carry light / curtain / music / aircon icons:
+     * open that screen. Returns false when the key is set to play controls or an action.
+     */
+    private fun openShortcut(key: Key): Boolean {
+        val r = room ?: return false
+        when (keyMode(key)) {
+            "lights" -> show(LightsScreen(this))
+            "shades" -> show(ShadesScreen(this))
+            "comfort" -> show(ComfortScreen(this))
+            "music" -> {
+                val current = activeActivity()
+                val listen = r.activitiesOf("listen")
+                when {
+                    current != null && current.kind == "listen" -> show(ActivityScreen(this, current.id))
+                    listen.size == 1 -> startRoomActivity(listen[0])
+                    listen.size > 1 -> show(SourcesScreen(this, "listen"))
+                }
+            }
+            else -> return false
+        }
+        return true
+    }
+
     private fun routeFor(key: Key, s: Screen?, act: Activity?): String {
+        if (key.isTransport) when (keyMode(key)) {
+            "lights", "shades", "music", "comfort" -> return "ui"
+            "action" -> return "device" // HA runs it, activity or not
+        }
         if (act == null || key == Key.HOME || key == Key.POWER || key == Key.VOICE) return "ui"
         if (key.isVolume || key.isColor || key.isTransport) return "device"
         if (s?.routesToDevice == true) return "device"

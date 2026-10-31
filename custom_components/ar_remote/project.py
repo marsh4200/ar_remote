@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 
-from .const import SLOTS_COLOR, SLOTS_CUSTOM
+from .const import KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
 
 
 def _name(hass: HomeAssistant, entity_id: str) -> str:
@@ -110,6 +110,17 @@ def _pct(value: Any) -> float | None:
         return None
 
 
+def _key_modes(keys: Any) -> dict[str, str]:
+    """What ⏪ ⏵ ⏹ ⏩ do on the remote. Actions stay in HA; the remote only needs the mode."""
+    keys = keys if isinstance(keys, dict) else {}
+    out: dict[str, str] = {}
+    for key, default in MEDIA_KEYS.items():
+        cfg = keys.get(key)
+        mode = cfg.get("mode") if isinstance(cfg, dict) else None
+        out[key] = mode if mode in KEY_MODES else default
+    return out
+
+
 def compile_device(hass: HomeAssistant, dev: dict) -> dict:
     """Remote settings. The logo gets ?v=<when it was saved> so a replaced file re-downloads."""
     if not isinstance(dev, dict):
@@ -126,6 +137,7 @@ def compile_device(hass: HomeAssistant, dev: dict) -> dict:
         "pin_hash": dev.get("pin_hash") or None,
         "clock": dev.get("clock") if dev.get("clock") in ("off", "charging", "always") else "charging",
         "clock_after": _clamp_int(dev.get("clock_after"), 30, 10, 600),
+        "keys": _key_modes(dev.get("keys")),
         "clock_x": _pct(dev.get("clock_x")),
         "clock_y": _pct(dev.get("clock_y")),
     }

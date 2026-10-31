@@ -49,9 +49,12 @@ from .const import (
     DEFAULT_PORT,
     DEVICE_DOMAINS,
     DOMAIN,
+    KEY_MODES,
     KINDS,
+    MEDIA_KEYS,
     MEDIA_DIR,
     MEDIA_URL,
+    PRESS_DOMAINS,
     SLOTS_COLOR,
     SLOTS_CUSTOM,
 )
@@ -95,6 +98,8 @@ def _devices(act: dict) -> list[dict]:
 OFF_PICK_DOMAINS = [
     "light", "switch", "media_player", "fan", "input_boolean", "climate",
     "remote", "siren", "humidifier",
+    # pressed, e.g. an IR "projector off" button
+    "button", "input_button", "script", "scene",
 ]
 
 
@@ -284,6 +289,13 @@ class ArRemoteComposer(OptionsFlow):
                 dev["pin_hash"] = None
             elif pin:
                 dev["pin_hash"] = pin_hash(pin)
+            keys = dev.setdefault("keys", {})
+            for key, default in MEDIA_KEYS.items():
+                mode = user_input.get(f"key_{key}", default)
+                keys[key] = {
+                    "mode": mode if mode in KEY_MODES else default,
+                    "action": user_input.get(f"key_{key}_action") or None,
+                }
             dev["clock"] = user_input.get("clock", "charging")
             dev["clock_after"] = int(user_input.get("clock_after", 30))
             # Clock hands centre: both empty = automatic.
@@ -321,8 +333,21 @@ class ArRemoteComposer(OptionsFlow):
                 vol.Required("pickup_sensitivity", default=dev.get("pickup_sensitivity", "normal")): _select(
                     ["low", "normal", "high"], dropdown=False, key="pickup_sensitivity"
                 ),
+                **self._key_fields(dev),
             }
         )
+
+    @staticmethod
+    def _key_fields(dev: dict) -> dict:
+        """What ⏪ ⏵ ⏹ ⏩ do (light / curtain / music / aircon icons on the Astrion)."""
+        fields: dict = {}
+        keys = dev.get("keys") if isinstance(dev.get("keys"), dict) else {}
+        for key, default in MEDIA_KEYS.items():
+            cfg = keys.get(key) if isinstance(keys.get(key), dict) else {}
+            mode = cfg.get("mode") if cfg.get("mode") in KEY_MODES else default
+            fields[vol.Required(f"key_{key}", default=mode)] = _select(KEY_MODES, key="key_mode")
+            fields[_opt(f"key_{key}_action", {f"key_{key}_action": cfg.get("action")})] = _ent(ACTION_DOMAINS)
+        return fields
 
     # ------------------------------------------------------------------- rooms
 
@@ -461,7 +486,7 @@ class ArRemoteComposer(OptionsFlow):
                     list(COMMAND_SETS)
                 ),
                 _opt("devices", {"devices": [d["entity"] for d in _devices(act)]}, []): _ent(
-                    DEVICE_DOMAINS, multiple=True
+                    DEVICE_DOMAINS + PRESS_DOMAINS, multiple=True
                 ),
                 _opt("power_on", act): _ent(ACTION_DOMAINS),
             }
@@ -565,10 +590,28 @@ class ArRemoteComposer(OptionsFlow):
         )
 
     def _source_list(self, entity_id: str | None) -> list[str]:
-        state = self.hass.states.get(entity_id) if entity_id else None
-        if state is None:
+        """Inputs the device reports, the one it is on now, and any typed in before."""
+        if not entity_id:
             return []
-        return [str(s) for s in state.attributes.get("source_list") or []]
+        options: list[str] = []
+        state = self.hass.states.get(entity_id)
+        if state is not None:
+            listed = state.attributes.get("source_list")
+            if isinstance(listed, (list, tuple)):
+                options += [str(s) for s in listed]
+            if state.attributes.get("source"):
+                options.append(str(state.attributes["source"]))
+        # Inputs already chosen for this device in any activity (e.g. typed "Game").
+        for room in self.rooms:
+            for act in room.get("activities") or []:
+                if act.get("source") == entity_id and act.get("source_input"):
+                    options.append(str(act["source_input"]))
+                if act.get("volume") == entity_id and act.get("input"):
+                    options.append(str(act["input"]))
+                for dev in _devices(act):
+                    if dev["entity"] == entity_id and dev.get("source"):
+                        options.append(str(dev["source"]))
+        return list(dict.fromkeys(o for o in options if o))
 
     def _name_of(self, entity_id: str | None) -> str:
         state = self.hass.states.get(entity_id) if entity_id else None
@@ -612,6 +655,10 @@ class ArRemoteComposer(OptionsFlow):
             for key in ("source_input", "input"):
                 value = user_input.get(key)
                 act[key] = value.strip() if isinstance(value, str) and value.strip() else None
+            vol_level = user_input.get("start_volume")
+            act["start_volume"] = (
+                max(0.0, min(100.0, _number(vol_level, 0))) if vol_level not in (None, "") else None
+            )
             for key, eid in self._device_keys.items():
                 value = user_input.get(key)
                 devices[eid]["source"] = value.strip() if isinstance(value, str) and value.strip() else None
@@ -624,6 +671,12 @@ class ArRemoteComposer(OptionsFlow):
                 continue
             marker, selector = self._input_field(key, entity, act.get(key))
             fields[marker] = selector
+        if act.get("volume"):
+            fields[_opt("start_volume", act)] = NumberSelector(
+                NumberSelectorConfig(min=0, max=100, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="%")
+            )
+        else:
+            act["start_volume"] = None
         self._device_keys = self._device_input_keys(act)
         for key, eid in self._device_keys.items():
             marker, selector = self._input_field(key, eid, devices[eid].get("source"))

@@ -72,6 +72,12 @@ Transport keys fall back to the source media player when the set has no command.
 
 ## Changes in 2.6.0
 
+- **Also turn on** takes buttons, scripts and scenes too (an IR "projector on" button is pressed).
+  A button on a Room Off list is pressed (a "projector off" button, now or after its minutes).
+- Inputs page: shows the input the device is on now and inputs typed before; type any input that
+  isn't listed (e.g. `Game`); empty = leave the device as it is; new **set the volume to %** (empty = don't change).
+- ⏪ ⏵ ⏹ ⏩ keys: open Lights / Shades / Music / Comfort by default (the icons on the Astrion), or play
+  controls, or run any action — per key under **Remote settings**.
 - Per-device timers in activities: *turn off when the activity starts* (now or after N s) and
   *turn on for a few seconds, then off*.
 - Room Off turns the whole room off (lights included, climate optional, extra off list), with an
@@ -90,7 +96,7 @@ Transport keys fall back to the source media player when the set has no command.
 | HOME | room home screen | room home screen |
 | POWER | Room Off | Room Off |
 | Volume, mute | the room's amp while an activity runs | the room's amp |
-| ⏪ ⏵ ⏹ ⏩ | the source while an activity runs | the source |
+| ⏪ ⏵ ⏹ ⏩ (light / curtain / music / aircon icons) | open Lights / Shades / Music / Comfort (default) — or play controls, or any action, per key under **Remote settings** | same |
 | Colour keys | the activity's colour actions | the activity's colour actions |
 | Left / Right on a light | dims ±10% | — |
 

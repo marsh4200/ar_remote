@@ -88,9 +88,14 @@ The project also carries the remote's own settings:
   "splash_seconds": 2,
   "charging_screen": true,
   "pickup": "auto",
-  "pickup_sensitivity": "normal"
+  "pickup_sensitivity": "normal",
+  "keys": {"REWIND": "lights", "PLAY": "shades", "STOP": "music", "FASTFORWARD": "comfort"}
 }
 ```
+
+`keys` sets the ⏪ ⏵ ⏹ ⏩ keys: `lights` / `shades` / `comfort` open that screen, `music` opens the
+running Listen activity (or starts / picks one), `transport` is play controls on the source, `action`
+sends the key with `route: device` and HA runs the action set for it (actions stay in HA).
 
 `logo` is resolved against the webhook URL's host and cached on the remote.
 `pickup` is `off`, `auto` (low-power sensors only) or `always` (keeps the CPU awake while
@@ -125,7 +130,7 @@ the screen is off). `/info` reports `wake_sensor`, `pickup` and `logo`.
 | `HOME` | 131 | app: home screen (never sent as device) |
 | `POWER` | 132 | app: Room Off |
 | `VOICE` | 133 | event only |
-| `REWIND` `PLAY` `STOP` `FASTFORWARD` | 134 135 136 137 | transport on the source |
+| `REWIND` `PLAY` `STOP` `FASTFORWARD` | 134 135 136 137 | per `device.keys`: screen shortcut (default), transport on the source, or an HA action |
 | `RED_BUTTON` `GREEN_BUTTON` `BLUE_BUTTON` `YELLOW_BUTTON` | 138–141 | colour slot actions |
 | `VOLUME_UP` `VOLUME_DOWN` | 24 25 | the room's amp — on every screen while an activity runs |
 | `MUTE` | 164 (91 on some units) | the room's amp |

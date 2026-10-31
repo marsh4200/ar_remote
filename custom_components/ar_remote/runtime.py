@@ -34,6 +34,8 @@ from .const import (
     CONF_WEBHOOK_ID,
     DOMAIN,
     EVENT_BUTTON,
+    MEDIA_KEYS,
+    PRESS_DOMAINS,
     SIGNAL_UPDATE,
     TRANSPORT_SERVICES,
 )
@@ -367,6 +369,16 @@ class ArRemoteRuntime:
         if msg.get("route") != "device" or press == "long":
             return
 
+        # ⏪ ⏵ ⏹ ⏩ set to "Run an action" under Remote settings: works on every screen.
+        if key in MEDIA_KEYS:
+            keys = (self.config.get("device") or {}).get("keys")
+            cfg = keys.get(key) if isinstance(keys, dict) else None
+            if isinstance(cfg, dict) and cfg.get("mode") == "action":
+                await self.run_action(cfg.get("action"))
+                return
+            if isinstance(cfg, dict) and cfg.get("mode") not in (None, "transport"):
+                return  # opens a screen on the remote; nothing to do here
+
         room_id = msg.get("room")
         act = self.activity(room_id, self.current.get(room_id))
         if act is None:
@@ -451,6 +463,17 @@ class ArRemoteRuntime:
             elif domain in OFF_DOMAINS:
                 await self._call("homeassistant", "turn_off", eid)
 
+    async def _off_or_press(self, entity_ids: set[str]) -> None:
+        """For lists the installer picked: switch things off, press buttons / run scripts.
+
+        Never used on start-step targets, so a scene used to start an activity
+        is never re-run at Room Off.
+        """
+        press = {e for e in entity_ids if e.split(".", 1)[0] in PRESS_DOMAINS}
+        await self._switch_off(entity_ids - press)
+        for eid in sorted(press):
+            await self.run_action(eid)
+
     async def _end_activity(self, room_id: str, act: dict, keep: set[str]) -> set[str]:
         """Stop the start sequence, run the stop sequence, switch off what it used."""
         start = await self._script(room_id, act, "start_actions")
@@ -492,7 +515,7 @@ class ArRemoteRuntime:
                 self._schedule_off(room_id, item["entity"], after)
             else:
                 self._cancel_timers(room_id, {item["entity"]})
-                await self._switch_off({item["entity"]})
+                await self._off_or_press({item["entity"]})
 
         # 2. Pulses: on now, off again by themselves after their own time.
         for item in timed_list(new.get("pulse")):
@@ -514,6 +537,13 @@ class ArRemoteRuntime:
             await self._call(
                 "media_player", "select_source", new["source"], {"source": new["source_input"]}
             )
+        start_volume = new.get("start_volume")
+        if new.get("volume") and start_volume is not None:
+            level = seconds(start_volume, -1)  # same safe number parsing
+            if 0 <= level <= 100:
+                await self._call(
+                    "media_player", "volume_set", new["volume"], {"volume_level": round(level / 100, 2)}
+                )
         for dev in devices:
             if dev.get("source") and dev["entity"].startswith("media_player."):
                 await self._call(
@@ -569,7 +599,13 @@ class ArRemoteRuntime:
             done: set[str] = set()
             if current:
                 done |= await self._end_activity(room_id, current, hold)
+            # _switch_off leaves buttons alone (an activity's "projector on"
+            # button must not be pressed at Room Off); buttons on the room's own
+            # off list are pressed.
             await self._switch_off(rest - done - hold)
+            off_list = set(entity_list(room.get("off_extra"))) - hold
+            for eid in sorted(e for e in off_list if e.split(".", 1)[0] in PRESS_DOMAINS):
+                await self.run_action(eid)
             for eid, secs in delayed.items():
                 self._schedule_off(room_id, eid, secs)
             if room.get("off_action"):
@@ -578,6 +614,9 @@ class ArRemoteRuntime:
 
     async def _turn_on(self, entity_id: str) -> None:
         domain = entity_id.split(".", 1)[0]
+        if domain in PRESS_DOMAINS:
+            await self.run_action(entity_id)  # e.g. an IR "projector on" button
+            return
         if domain in ("media_player", "remote", "switch", "light", "fan", "siren"):
             await self._call(domain, "turn_on", entity_id)
         else:
@@ -643,7 +682,7 @@ class ArRemoteRuntime:
         self._timer_unsubs[key] = async_call_later(self.hass, delay, _fire)
 
     async def _timer_fired(self, entity_id: str) -> None:
-        await self._switch_off({entity_id})
+        await self._off_or_press({entity_id})
         await self._save()
 
     @callback

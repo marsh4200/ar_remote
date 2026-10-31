@@ -52,8 +52,8 @@
           "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
           "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off.",
           "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
-          "off_extra": "Anything else that must be off when the room is off — fans, a heater, an extra amp, a TV that isn't in an activity.",
-          "off_delayed": "These stay on after Room Off and switch off by themselves. Starting an activity that uses one cancels its timer.",
+          "off_extra": "Anything else that must be off when the room is off — fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
+          "off_delayed": "These stay on after Room Off and switch off by themselves. A **button** here is pressed when its time is up (e.g. projector off after the lamp cools). Starting an activity that uses one cancels its timer.",
           "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
         }
       },
@@ -83,8 +83,8 @@
         "data_description": {
           "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
           "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
-          "off_extra": "Anything else that must be off when the room is off — fans, a heater, an extra amp, a TV that isn't in an activity.",
-          "off_delayed": "These stay on after Room Off and switch off by themselves. Starting an activity that uses one cancels its timer.",
+          "off_extra": "Anything else that must be off when the room is off — fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
+          "off_delayed": "These stay on after Room Off and switch off by themselves. A **button** here is pressed when its time is up (e.g. projector off after the lamp cools). Starting an activity that uses one cancels its timer.",
           "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
         }
       },
@@ -101,14 +101,14 @@
           "volume": "Volume device (amp / soundbar / TV)",
           "dpad": "Navigation remote (D-pad, OK, back)",
           "command_set": "Navigation command set",
-          "devices": "Also turn on (projector, amp, screen …)",
+          "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
           "power_on": "Extra action when the activity starts (optional)"
         },
         "data_description": {
           "volume": "Volume, mute and the volume rocker go here. Leave empty to use the source.",
           "dpad": "A remote entity — Apple TV, Android TV, Roku, Samsung, LG or a Broadlink/IR remote.",
           "command_set": "Which command names the navigation remote understands.",
-          "devices": "Projector, amplifier, screen, power switches … They switch on when the activity starts and go off at Room Off (or when the next activity doesn't use them). Media players can also be sent to an input on the next page — leave it empty to just switch on.",
+          "devices": "Projector, amplifier, screen, power switches — or an IR / RF **button**, script or scene that switches something on (it is pressed when the activity starts). Switches and players go off at Room Off (or when the next activity doesn't use them); a button can't be switched off, so put its matching **off** button on the room's Room Off lists. Media players can be sent to an input on the next page.",
           "power_on": "A script or scene to run as well. For lights, delays and more, use the next pages.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
@@ -125,11 +125,11 @@
           "volume": "Volume device (amp / soundbar / TV)",
           "dpad": "Navigation remote (D-pad, OK, back)",
           "command_set": "Navigation command set",
-          "devices": "Also turn on (projector, amp, screen …)",
+          "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
           "power_on": "Extra action when the activity starts (optional)"
         },
         "data_description": {
-          "devices": "Projector, amplifier, screen, power switches … They switch on when the activity starts and go off at Room Off (or when the next activity doesn't use them). Media players can also be sent to an input on the next page — leave it empty to just switch on.",
+          "devices": "Projector, amplifier, screen, power switches — or an IR / RF **button**, script or scene that switches something on (it is pressed when the activity starts). Switches and players go off at Room Off (or when the next activity doesn't use them); a button can't be switched off, so put its matching **off** button on the room's Room Off lists. Media players can be sent to an input on the next page.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
         }
@@ -168,10 +168,15 @@
       },
       "sources": {
         "title": "Inputs for {activity}",
-        "description": "Pick the input each device switches to when the activity starts. The lists come from the devices themselves. Leave an input empty and that device just switches on.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}",
+        "description": "Pick what each device switches to when the activity starts. The lists show the inputs each device reports, the one it is on now, and any you typed before. **Not in the list?** Type it exactly as the device shows it (e.g. `Game`) and press Enter. Leave a field empty and that device is left as it is.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}",
         "data": {
-          "source_input": "Input on the source",
-          "input": "Input on the volume device"
+          "source_input": "Source — app or input to open (empty = leave it)",
+          "input": "Volume device — input to switch to (empty = stays on whatever it's on)",
+          "start_volume": "Volume device — set the volume to (empty = don't change)"
+        },
+        "data_description": {
+          "input": "Only if the amp / soundbar also switches the picture or sound source, e.g. a Denon set to GAME or TV AUDIO. Leave empty if it should just stay where it is.",
+          "start_volume": "0–100 %. Set when the activity starts. Leave empty to keep the current volume."
         }
       },
       "actions": {
@@ -186,7 +191,7 @@
         },
         "data_description": {
           "turn_off_on_end": "Lights, switches and players used in the start steps go off at Room Off or when you switch to an activity that doesn't use them. Music is paused first.",
-          "off_on_start": "Things that may already be on but must be off for this activity (a light, another TV, a fan). Each gets its own delay on the next page — 0 is straight away.",
+          "off_on_start": "Things that may already be on but must be off for this activity (a light, another TV, a fan). A button / script here is pressed instead. Each gets its own delay on the next page — 0 is straight away.",
           "pulse": "Each comes on when the activity starts and switches itself off after its own number of seconds (next page) — e.g. a light that flashes on while everything powers up, or a screen-drop relay."
         }
       },
@@ -205,7 +210,15 @@
           "clock_x": "Clock centre — across the logo",
           "clock_y": "Clock centre — down the logo",
           "pickup": "Wake the screen when the remote is picked up",
-          "pickup_sensitivity": "Pick-up sensitivity"
+          "pickup_sensitivity": "Pick-up sensitivity",
+          "key_REWIND": "⏪ key (light icon)",
+          "key_REWIND_action": "⏪ key — action (when set to Run an action)",
+          "key_PLAY": "⏵ key (curtain icon)",
+          "key_PLAY_action": "⏵ key — action (when set to Run an action)",
+          "key_STOP": "⏹ key (music icon)",
+          "key_STOP_action": "⏹ key — action (when set to Run an action)",
+          "key_FASTFORWARD": "⏩ key (aircon icon)",
+          "key_FASTFORWARD_action": "⏩ key — action (when set to Run an action)"
         },
         "data_description": {
           "logo": "e.g. `/local/logo.png`. Clear it (and don't upload) for the built-in A&R Smart Home logo.",
@@ -215,7 +228,8 @@
           "logo_upload": "Pick an image from your computer or phone. A PNG with a transparent background looks best on the dark screen. Leave empty to keep the current logo.",
           "clock": "Your logo as a clock face. On the charger, the screen stays on and the clock appears instead of going dark; any key or tap goes back. Always also shows it off the charger (keeps the screen on — uses a lot of battery).",
           "installer_pin": "Protects **Installer settings** on the remote's pull-down panel (Android settings, restart, updates). Leave empty to keep the current PIN. Only a hash is stored.",
-          "clock_x": "Leave both empty for automatic (the A&R logo's circle, or the middle of another logo). For the A&R logo the circle is at 50.4 % across, 37.1 % down."
+          "clock_x": "Leave both empty for automatic (the A&R logo's circle, or the middle of another logo). For the A&R logo the circle is at 50.4 % across, 37.1 % down.",
+          "key_REWIND": "What the four media keys do. By default each opens the screen its icon shows. **Play controls** is the old behaviour (rewind / play / stop / forward on the source). **Run an action** runs the script, scene or button picked below it, on any screen."
         }
       },
       "copy_activity": {
@@ -266,6 +280,16 @@
         "charging": "On the charger",
         "always": "Always (uses battery)",
         "off": "Off"
+      }
+    },
+    "key_mode": {
+      "options": {
+        "lights": "Open Lights",
+        "shades": "Open Shades / curtains",
+        "music": "Music (Listen)",
+        "comfort": "Open Comfort / aircon",
+        "transport": "Play controls (rewind / play / stop / forward)",
+        "action": "Run an action"
       }
     }
   },
