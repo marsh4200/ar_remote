@@ -50,7 +50,10 @@ Starting an activity, in order:
 1. turns off anything the previous activity used that this one doesn't;
 2. turns off everything on its **Turn off when the activity starts** list (each straight away or after its own delay);
 3. switches on every **Turn on for a few seconds** device — each one switches itself off after its own time;
-4. powers on its source, amp and every **Also turn on** device, selects inputs, runs the start action and start steps.
+4. powers on its source, amp and every **Also turn on** device, runs the start action and start steps;
+5. waits **7 s** (adjustable per activity on the Inputs page) for everything to wake up, then switches inputs and sets
+   the volume — skipping any device already on the right input. If everything was already on, there's no wait.
+   Room Off or another activity during the wait cancels it.
 
 **Room Off** (or the remote's power key) is *everything off*: it pauses the music, turns off every source
 and amp in the room, every **Also turn on** device, everything the activity's start steps turned on, the
@@ -78,6 +81,11 @@ Transport keys fall back to the source media player when the set has no command.
   isn't listed (e.g. `Game`); empty = leave the device as it is; new **set the volume to %** (empty = don't change).
 - ⏪ ⏵ ⏹ ⏩ keys: open Lights / Shades / Music / Comfort by default (the icons on the Astrion), or play
   controls, or run any action — per key under **Remote settings**.
+- Inputs switch after a 7 s wake-up wait (adjustable; skipped when everything was already on), and a
+  device already on the right input is left alone.
+- Room Off powers a receiver off through whichever of its entities can (e.g. the Denon AVR entity when
+  the activity uses the HEOS one). The room's activity entity shows **last_room_off**: what was switched
+  off, pressed, kept running, and anything Home Assistant can't power off.
 - Per-device timers in activities: *turn off when the activity starts* (now or after N s) and
   *turn on for a few seconds, then off*.
 - Room Off turns the whole room off (lights included, climate optional, extra off list), with an

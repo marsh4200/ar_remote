@@ -31,6 +31,11 @@ class RoomActivity(ArRemoteEntity, SelectEntity):
         act = self.runtime.activity(self._room_id, self.runtime.current.get(self._room_id))
         return act["name"] if act else OFF
 
+    @property
+    def extra_state_attributes(self) -> dict:
+        """What the last Room Off did — check here when something didn't go off."""
+        return {"last_room_off": self.runtime.last_room_off.get(self._room_id)}
+
     async def async_select_option(self, option: str) -> None:
         if option == OFF:
             await self.runtime.room_off(self._room_id)

@@ -50,7 +50,7 @@ PROJECT = {
                 {
                     "id": "apple_tv", "name": "Apple TV", "kind": "watch",
                     "source": "media_player.atv", "source_input": None,
-                    "volume": "media_player.denon", "input": "MEDIA PLAYER",
+                    "volume": "media_player.denon", "input": "MEDIA PLAYER", "input_delay": 0,
                     "dpad": "remote.atv", "command_set": "apple_tv", "power_on": None,
                     "slots": {"red": {"label": "Lights 50%", "action": "script.dim"},
                               "custom1": {"label": "Menu", "action": "script.menu"}},
@@ -366,11 +366,11 @@ async def test_also_turn_on_devices_in_composer(hass: HomeAssistant, client) -> 
 async def test_also_turn_on_devices_power_on_and_off(hass: HomeAssistant, client) -> None:
     project = {"rooms": [{
         "id": "cinema", "name": "Cinema", "activities": [
-            {"id": "movie", "name": "Movie Time", "kind": "watch", "source": "media_player.atv", "slots": {},
+            {"id": "movie", "name": "Movie Time", "kind": "watch", "source": "media_player.atv", "slots": {}, "input_delay": 0,
              "devices": [{"entity": "media_player.projector", "source": "HDMI 2"},
                          {"entity": "switch.screen", "source": None},
                          {"entity": "media_player.amp", "source": None}]},
-            {"id": "music", "name": "Music", "kind": "listen", "source": "media_player.spotify", "slots": {},
+            {"id": "music", "name": "Music", "kind": "listen", "source": "media_player.spotify", "slots": {}, "input_delay": 0,
              "devices": [{"entity": "media_player.amp", "source": "NET"}]},
         ],
     }]}

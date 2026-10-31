@@ -23,6 +23,7 @@ from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.script import Script, async_validate_actions_config
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from .api import RemoteClient, RemoteError
 from .const import (
@@ -44,6 +45,11 @@ from .project import compact_state, compile_project, tracked_entities
 _LOGGER = logging.getLogger(__name__)
 
 POLL_INTERVAL = timedelta(seconds=60)
+DEFAULT_INPUT_DELAY = 7.0  # s between powering on and switching inputs
+MP_TURN_ON = 128  # MediaPlayerEntityFeature.TURN_ON
+MP_TURN_OFF = 256  # MediaPlayerEntityFeature.TURN_OFF
+MP_PAUSE = 1  # MediaPlayerEntityFeature.PAUSE
+ASLEEP = {"off", "standby", "unavailable", "unknown"}
 PUSH_DELAY = 0.25
 
 # Domains an activity's start sequence may have switched on, and that Room Off
@@ -117,6 +123,10 @@ class ArRemoteRuntime:
         self._timers: dict[str, dict] = {}
         self._timer_unsubs: dict[str, Any] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        # Per room: the "wait, then switch inputs" step of a starting activity.
+        self._input_tasks: dict[str, asyncio.Task] = {}
+        # Per room: what the last Room Off did (shown on the room's activity entity).
+        self.last_room_off: dict[str, dict] = {}
 
     # ------------------------------------------------------------------ setup
 
@@ -188,6 +198,9 @@ class ArRemoteRuntime:
         for unsub in self._timer_unsubs.values():
             unsub()
         self._timer_unsubs.clear()
+        for task in self._input_tasks.values():
+            task.cancel()
+        self._input_tasks.clear()
 
     # ------------------------------------------------------------- sync logic
 
@@ -454,14 +467,68 @@ class ArRemoteRuntime:
         if script is not None:
             self.hass.async_create_task(script.async_run(context=Context()), "ar_remote sequence")
 
-    async def _switch_off(self, entity_ids: set[str]) -> None:
+    def _features(self, entity_id: str) -> int | None:
+        state = self.hass.states.get(entity_id)
+        if state is None or "supported_features" not in state.attributes:
+            return None  # unknown: just try the call
+        try:
+            return int(state.attributes.get("supported_features") or 0)
+        except (TypeError, ValueError):
+            return None
+
+    def _siblings(self, entity_id: str) -> list[str]:
+        """Other media players on the same HA device (Denon AVR + HEOS, main zone + zone 2)."""
+        try:
+            from homeassistant.helpers import entity_registry as er
+
+            reg = er.async_get(self.hass)
+            entry = reg.async_get(entity_id)
+            if entry is None or not entry.device_id:
+                return []
+            return [
+                e.entity_id for e in er.async_entries_for_device(reg, entry.device_id)
+                if e.entity_id != entity_id and e.entity_id.startswith("media_player.")
+            ]
+        except Exception:  # noqa: BLE001 - registry lookups are only a fallback
+            return []
+
+    def _power_entity(self, entity_id: str, feature: int) -> str | None:
+        """The entity that can actually power this player on/off.
+
+        A HEOS entity can't switch a Denon off; its Denon AVR sibling can.
+        None when nothing on the device can.
+        """
+        feats = self._features(entity_id)
+        if feats is None or feats & feature:
+            return entity_id  # unknown (not loaded yet): just try it
+        for sib in self._siblings(entity_id):
+            sf = self._features(sib)
+            if sf is not None and sf & feature:
+                return sib
+        return None
+
+    async def _switch_off(self, entity_ids: set[str], report: dict | None = None) -> None:
         for eid in sorted(entity_ids):
             domain = eid.split(".", 1)[0]
             if domain == "media_player":
-                await self._call("media_player", "media_pause", eid)
-                await self._call("media_player", "turn_off", eid)
+                feats = self._features(eid)
+                if feats is None or feats & MP_PAUSE:
+                    await self._call("media_player", "media_pause", eid)
+                target = self._power_entity(eid, MP_TURN_OFF)
+                if target is None:
+                    if report is not None:
+                        report.setdefault("cannot_power_off", []).append(eid)
+                    _LOGGER.warning(
+                        "AR Remote: %s can't be switched off (no power-off support on it or its device)", eid
+                    )
+                    continue
+                await self._call("media_player", "turn_off", target)
+                if report is not None:
+                    report.setdefault("switched_off", []).append(target)
             elif domain in OFF_DOMAINS:
                 await self._call("homeassistant", "turn_off", eid)
+                if report is not None:
+                    report.setdefault("switched_off", []).append(eid)
 
     async def _off_or_press(self, entity_ids: set[str]) -> None:
         """For lists the installer picked: switch things off, press buttons / run scripts.
@@ -474,7 +541,7 @@ class ArRemoteRuntime:
         for eid in sorted(press):
             await self.run_action(eid)
 
-    async def _end_activity(self, room_id: str, act: dict, keep: set[str]) -> set[str]:
+    async def _end_activity(self, room_id: str, act: dict, keep: set[str], report: dict | None = None) -> set[str]:
         """Stop the start sequence, run the stop sequence, switch off what it used."""
         start = await self._script(room_id, act, "start_actions")
         if start is not None and start.is_running:
@@ -484,7 +551,7 @@ class ArRemoteRuntime:
             off = await self._activity_entities(room_id, act) - keep
         else:
             off = (self._core_entities(act) | self._pulse_entities(act)) - keep
-        await self._switch_off(off)
+        await self._switch_off(off, report)
         return off
 
     def _lock(self, room_id: str) -> asyncio.Lock:
@@ -505,6 +572,7 @@ class ArRemoteRuntime:
         # A Room Off "stay on for X min" or an earlier pulse must not switch off
         # something this activity is about to use.
         self._cancel_timers(room_id, uses)
+        self._cancel_inputs(room_id)
         if old and old["id"] != new["id"]:
             await self._end_activity(room_id, old, uses)
 
@@ -522,36 +590,77 @@ class ArRemoteRuntime:
             await self._turn_on(item["entity"])
             self._schedule_off(room_id, item["entity"], seconds(item.get("seconds"), 5.0) or 5.0)
 
-        # 3. Source, amp and every "Also turn on" device, then inputs.
+        # 3. Source, amp and every "Also turn on" device.
+        targets = self._input_targets(new)
+        was_on = {eid: self._is_on(eid) for eid in targets}
         for eid in (new.get("volume"), new.get("source")):
             if eid:
-                await self._call("media_player", "turn_on", eid)
-        devices = self._devices(new)
-        for dev in devices:
+                await self._call("media_player", "turn_on", self._power_entity(eid, MP_TURN_ON) or eid)
+        for dev in self._devices(new):
             await self._turn_on(dev["entity"])
-        if new.get("input") and new.get("volume"):
-            await self._call(
-                "media_player", "select_source", new["volume"], {"source": new["input"]}
-            )
-        if new.get("source_input") and new.get("source"):
-            await self._call(
-                "media_player", "select_source", new["source"], {"source": new["source_input"]}
-            )
-        start_volume = new.get("start_volume")
-        if new.get("volume") and start_volume is not None:
-            level = seconds(start_volume, -1)  # same safe number parsing
-            if 0 <= level <= 100:
-                await self._call(
-                    "media_player", "volume_set", new["volume"], {"volume_level": round(level / 100, 2)}
-                )
-        for dev in devices:
-            if dev.get("source") and dev["entity"].startswith("media_player."):
-                await self._call(
-                    "media_player", "select_source", dev["entity"], {"source": dev["source"]}
-                )
         await self.run_action(new.get("power_on"))
         self._run(await self._script(room_id, new, "start_actions"))
         await self._set_current(room_id, new["id"])
+
+        # 4. Inputs and volume once everything has had time to wake up. Runs in
+        #    the background so the remote isn't kept waiting and Room Off (or
+        #    another activity) can cancel it.
+        self._cancel_inputs(room_id)
+        if targets or new.get("start_volume") is not None:
+            delay = 0.0 if targets and all(was_on.values()) else seconds(
+                new.get("input_delay"), DEFAULT_INPUT_DELAY
+            )
+            self._input_tasks[room_id] = self.hass.async_create_task(
+                self._switch_inputs(room_id, new, delay), "ar_remote inputs"
+            )
+
+    def _input_targets(self, act: dict) -> dict[str, str]:
+        """media player -> input it must be on for this activity."""
+        out: dict[str, str] = {}
+        if act.get("volume") and act.get("input"):
+            out[act["volume"]] = act["input"]
+        if act.get("source") and act.get("source_input"):
+            out[act["source"]] = act["source_input"]
+        for dev in self._devices(act):
+            if dev.get("source") and dev["entity"].startswith("media_player."):
+                out[dev["entity"]] = dev["source"]
+        return out
+
+    def _is_on(self, entity_id: str) -> bool:
+        state = self.hass.states.get(entity_id)
+        return state is not None and state.state not in ASLEEP
+
+    @callback
+    def _cancel_inputs(self, room_id: str) -> None:
+        task = self._input_tasks.pop(room_id, None)
+        if task is not None and not task.done():
+            task.cancel()
+
+    async def _switch_inputs(self, room_id: str, act: dict, delay: float) -> None:
+        """Wait `delay` s after power-on, then set inputs (only where not already right) and volume."""
+        try:
+            if delay > 0:
+                await asyncio.sleep(delay)
+            for eid, wanted in self._input_targets(act).items():
+                state = self.hass.states.get(eid)
+                current = state.attributes.get("source") if state is not None else None
+                if current is not None and str(current) == wanted:
+                    continue  # already on it: leave it alone
+                await self._select_source(eid, wanted)
+            start_volume = act.get("start_volume")
+            if act.get("volume") and start_volume is not None:
+                level = seconds(start_volume, -1)
+                if 0 <= level <= 100:
+                    await self._call(
+                        "media_player", "volume_set", act["volume"], {"volume_level": round(level / 100, 2)}
+                    )
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - a failed input switch must not break the room
+            _LOGGER.exception("AR Remote: switching inputs for %s failed", act.get("name"))
+        finally:
+            if self._input_tasks.get(room_id) is asyncio.current_task():
+                self._input_tasks.pop(room_id, None)
 
     def room_off_entities(self, room: dict) -> set[str]:
         """What Room Off switches off besides the running activity."""
@@ -593,31 +702,61 @@ class ArRemoteRuntime:
             handled = rest | hold
             if current:
                 handled |= await self._activity_entities(room_id, current)
-            # Whatever happens to these now is decided here, not by an older timer.
+            # Whatever happens to these now is decided here, not by an older timer
+            # or an input switch still waiting to run.
             self._cancel_timers(room_id, handled)
+            self._cancel_inputs(room_id)
 
+            report: dict[str, Any] = {"at": dt_util.now().isoformat(timespec="seconds")}
             done: set[str] = set()
             if current:
-                done |= await self._end_activity(room_id, current, hold)
+                done |= await self._end_activity(room_id, current, hold, report)
             # _switch_off leaves buttons alone (an activity's "projector on"
             # button must not be pressed at Room Off); buttons on the room's own
             # off list are pressed.
-            await self._switch_off(rest - done - hold)
+            await self._switch_off(rest - done - hold, report)
             off_list = set(entity_list(room.get("off_extra"))) - hold
             for eid in sorted(e for e in off_list if e.split(".", 1)[0] in PRESS_DOMAINS):
                 await self.run_action(eid)
+                report.setdefault("pressed", []).append(eid)
             for eid, secs in delayed.items():
                 self._schedule_off(room_id, eid, secs)
+            report["kept_running_minutes"] = {e: round(v / 60, 1) for e, v in delayed.items()}
+            cant = report.get("cannot_power_off") or []
+            report["note"] = (
+                "Nothing listed to switch off — add the room's devices to its activities or lists"
+                if not report.get("switched_off") and not report.get("pressed")
+                else f"{len(cant)} device(s) can't be powered off by Home Assistant" if cant else "ok"
+            )
+            self.last_room_off[room_id] = report
+            _LOGGER.info("AR Remote: Room Off %s: %s", room_id, report)
             if room.get("off_action"):
                 await self.run_action(room["off_action"])
             await self._set_current(room_id, None)
+
+    def _sources_of(self, entity_id: str) -> list[str]:
+        state = self.hass.states.get(entity_id)
+        listed = state.attributes.get("source_list") if state is not None else None
+        return [str(x) for x in listed] if isinstance(listed, (list, tuple)) else []
+
+    async def _select_source(self, entity_id: str, source: str) -> None:
+        """Select an input; if this entity doesn't list it but another entity of the
+        same receiver does (Denon AVR vs HEOS, main zone vs zone 2), ask that one."""
+        target = entity_id
+        if source not in self._sources_of(entity_id):
+            target = next(
+                (sib for sib in self._siblings(entity_id) if source in self._sources_of(sib)), entity_id
+            )
+        await self._call("media_player", "select_source", target, {"source": source})
 
     async def _turn_on(self, entity_id: str) -> None:
         domain = entity_id.split(".", 1)[0]
         if domain in PRESS_DOMAINS:
             await self.run_action(entity_id)  # e.g. an IR "projector on" button
             return
-        if domain in ("media_player", "remote", "switch", "light", "fan", "siren"):
+        if domain == "media_player":
+            await self._call(domain, "turn_on", self._power_entity(entity_id, MP_TURN_ON) or entity_id)
+        elif domain in ("remote", "switch", "light", "fan", "siren"):
             await self._call(domain, "turn_on", entity_id)
         else:
             await self._call("homeassistant", "turn_on", entity_id)

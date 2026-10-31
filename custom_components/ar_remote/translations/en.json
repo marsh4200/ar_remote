@@ -168,15 +168,17 @@
       },
       "sources": {
         "title": "Inputs for {activity}",
-        "description": "Pick what each device switches to when the activity starts. The lists show the inputs each device reports, the one it is on now, and any you typed before. **Not in the list?** Type it exactly as the device shows it (e.g. `Game`) and press Enter. Leave a field empty and that device is left as it is.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}",
+        "description": "Pick what each device switches to when the activity starts. Leave a field empty and that device is left as it is.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}\n\nThe lists come from exactly these entities. **Inputs missing** (e.g. Game, Bluetooth)? Check the entity above is the one you see the full list on in Home Assistant — a receiver often has several (Denon AVR, HEOS, Zone 2) and HEOS / Zone 2 report fewer inputs. Go **back** and pick the other entity, or type the input exactly as Home Assistant shows it and press Enter.",
         "data": {
           "source_input": "Source — app or input to open (empty = leave it)",
           "input": "Volume device — input to switch to (empty = stays on whatever it's on)",
-          "start_volume": "Volume device — set the volume to (empty = don't change)"
+          "start_volume": "Volume device — set the volume to (empty = don't change)",
+          "input_delay": "Wait before switching inputs and volume"
         },
         "data_description": {
           "input": "Only if the amp / soundbar also switches the picture or sound source, e.g. a Denon set to GAME or TV AUDIO. Leave empty if it should just stay where it is.",
-          "start_volume": "0–100 %. Set when the activity starts. Leave empty to keep the current volume."
+          "start_volume": "0–100 %. Set when the activity starts. Leave empty to keep the current volume.",
+          "input_delay": "Gives the amp, projector and TV time to wake up after they're switched on. If everything was already on, inputs switch straight away. A device already on the right input is left alone."
         }
       },
       "actions": {

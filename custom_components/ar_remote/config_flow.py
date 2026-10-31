@@ -593,14 +593,15 @@ class ArRemoteComposer(OptionsFlow):
         """Inputs the device reports, the one it is on now, and any typed in before."""
         if not entity_id:
             return []
-        options: list[str] = []
+        options: list[str] = self._reported_sources(entity_id)
         state = self.hass.states.get(entity_id)
-        if state is not None:
-            listed = state.attributes.get("source_list")
-            if isinstance(listed, (list, tuple)):
-                options += [str(s) for s in listed]
-            if state.attributes.get("source"):
-                options.append(str(state.attributes["source"]))
+        if state is not None and state.attributes.get("source"):
+            options.append(str(state.attributes["source"]))
+        # The same receiver often has more than one entity (Denon AVR + HEOS,
+        # main zone + zone 2). Inputs from its siblings on the same device are
+        # offered too, so nothing it can do is missing from the list.
+        for sibling in self._siblings(entity_id):
+            options += self._reported_sources(sibling)
         # Inputs already chosen for this device in any activity (e.g. typed "Game").
         for room in self.rooms:
             for act in room.get("activities") or []:
@@ -612,6 +613,38 @@ class ArRemoteComposer(OptionsFlow):
                     if dev["entity"] == entity_id and dev.get("source"):
                         options.append(str(dev["source"]))
         return list(dict.fromkeys(o for o in options if o))
+
+    def _reported_sources(self, entity_id: str) -> list[str]:
+        state = self.hass.states.get(entity_id)
+        listed = state.attributes.get("source_list") if state is not None else None
+        return [str(x) for x in listed] if isinstance(listed, (list, tuple)) else []
+
+    def _siblings(self, entity_id: str) -> list[str]:
+        """Other media players on the same HA device as entity_id."""
+        try:
+            from homeassistant.helpers import entity_registry as er
+
+            reg = er.async_get(self.hass)
+            entry = reg.async_get(entity_id)
+            if entry is None or not entry.device_id:
+                return []
+            return [
+                e.entity_id for e in er.async_entries_for_device(reg, entry.device_id)
+                if e.entity_id != entity_id and e.entity_id.startswith("media_player.")
+            ]
+        except Exception:  # noqa: BLE001 - only a nicer list; never break the form
+            return []
+
+    def _input_summary(self, entity_id: str | None) -> str:
+        """'Denon AVR (media_player.denon_avr) — 13 inputs reported' for the form text."""
+        if not entity_id:
+            return "—"
+        n = len(self._reported_sources(entity_id))
+        extra = sum(len(self._reported_sources(s)) for s in self._siblings(entity_id))
+        text = f"{self._name_of(entity_id)} (`{entity_id}`) — {n} inputs reported"
+        if extra:
+            text += " (+ inputs from its other entities on the same device)"
+        return text
 
     def _name_of(self, entity_id: str | None) -> str:
         state = self.hass.states.get(entity_id) if entity_id else None
@@ -655,6 +688,7 @@ class ArRemoteComposer(OptionsFlow):
             for key in ("source_input", "input"):
                 value = user_input.get(key)
                 act[key] = value.strip() if isinstance(value, str) and value.strip() else None
+            act["input_delay"] = max(0.0, min(60.0, _number(user_input.get("input_delay"), 7)))
             vol_level = user_input.get("start_volume")
             act["start_volume"] = (
                 max(0.0, min(100.0, _number(vol_level, 0))) if vol_level not in (None, "") else None
@@ -671,6 +705,10 @@ class ArRemoteComposer(OptionsFlow):
                 continue
             marker, selector = self._input_field(key, entity, act.get(key))
             fields[marker] = selector
+        if fields or act.get("volume"):
+            fields[vol.Required("input_delay", default=_number(act.get("input_delay"), 7))] = NumberSelector(
+                NumberSelectorConfig(min=0, max=60, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
+            )
         if act.get("volume"):
             fields[_opt("start_volume", act)] = NumberSelector(
                 NumberSelectorConfig(min=0, max=100, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="%")
@@ -688,9 +726,12 @@ class ArRemoteComposer(OptionsFlow):
             data_schema=vol.Schema(fields),
             description_placeholders={
                 "activity": act["name"],
-                "source": self._name_of(act.get("source")) or "—",
-                "volume": self._name_of(act.get("volume")) or "—",
-                "devices": ", ".join(self._name_of(e) for e in devices) or "—",
+                "source": self._input_summary(act.get("source")),
+                "volume": self._input_summary(act.get("volume")),
+                "devices": ", ".join(
+                    self._input_summary(e) if e.startswith("media_player.") else self._name_of(e)
+                    for e in devices
+                ) or "—",
             },
         )
 
