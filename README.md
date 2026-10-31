@@ -77,6 +77,9 @@ Transport keys fall back to the source media player when the set has no command.
 
 - Every Also-turn-on device can have a **turn off with** command (activity step 2): an IR "projector off"
   button, a script or a plug. Room Off and timers use it instead of the on-button.
+- **Show what's playing from** (activity step 1): take the title and picture from another entity, e.g. the TV's
+  Google Cast entity, when the source (Android TV Remote) doesn't report them.
+- A colour / custom button press shows what happened on the remote's screen ("Yellow ✓" or the reason it didn't run).
 - Home on a Watch / Listen screen: short press = the device's home screen (Android TV, Apple TV, Roku …),
   long press = back to the room page.
 - Settings panel: **Touch sounds** now switches Android's own tap / key sounds (it only added an extra

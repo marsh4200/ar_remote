@@ -264,18 +264,48 @@ class ArRemoteRuntime:
         return {
             "full": True,
             "rooms": {rid: {"activity": act} for rid, act in self.current.items()},
-            "entities": {
-                eid: compact_state(self.hass.states.get(eid), self.base_url)
-                for eid in tracked_entities(self.config)
-            },
+            "entities": {eid: self._compact(eid) for eid in tracked_entities(self.config)},
         }
+
+    def _now_playing_map(self) -> dict[str, list[str]]:
+        """source -> the entities that say what is playing on it ('Show what's playing from')."""
+        out: dict[str, list[str]] = {}
+        for room in self.config.get("rooms") or []:
+            for act in room.get("activities") or []:
+                src, np = act.get("source"), act.get("now_playing")
+                if isinstance(src, str) and isinstance(np, str) and src and np and np != src:
+                    out.setdefault(src, [])
+                    if np not in out[src]:
+                        out[src].append(np)
+        return out
+
+    def _compact(self, entity_id: str) -> dict:
+        """The entity's state for the remote; a source also gets the title / artist /
+        picture of its 'Show what's playing from' entity (e.g. the TV's Google Cast
+        entity, which knows the YouTube title and thumbnail)."""
+        out = compact_state(self.hass.states.get(entity_id), self.base_url)
+        for np in self._now_playing_map().get(entity_id, []):
+            info = compact_state(self.hass.states.get(np), self.base_url)
+            if info.get("s") in ("off", "unavailable", "unknown", "standby"):
+                continue
+            if info.get("t") or info.get("pic"):
+                for key in ("t", "a", "pic"):
+                    if info.get(key):
+                        out[key] = info[key]
+                    else:
+                        out.pop(key, None)
+                break
+        return out
 
     @callback
     def _on_state_change(self, event: Event) -> None:
         entity_id = event.data["entity_id"]
-        self._pending.setdefault("entities", {})[entity_id] = compact_state(
-            event.data.get("new_state"), self.base_url
-        )
+        pending = self._pending.setdefault("entities", {})
+        pending[entity_id] = self._compact(entity_id)
+        # A 'now playing' entity changed: refresh the source it describes.
+        for src, nps in self._now_playing_map().items():
+            if entity_id in nps:
+                pending[src] = self._compact(src)
         self._schedule_push()
 
     @callback
@@ -924,6 +954,12 @@ class ArRemoteRuntime:
         info["at"] = dt_util.now().isoformat(timespec="seconds")
         self.last_button[room_id] = info
         async_dispatcher_send(self.hass, self.signal)
+        # Show the outcome on the remote itself, so a key that "does nothing" says why.
+        name = str(info.get("button") or "").capitalize()
+        result = str(info.get("result") or "")
+        text = f"{name} ✓" if result.startswith("ok") else f"{name}: {result}"
+        self._pending["toast"] = text[:120]
+        self._schedule_push()
 
     async def _slot(self, room_id: str | None, act: dict | None, slot: str, via: str) -> None:
         """A custom / colour button: run its action and record what happened."""

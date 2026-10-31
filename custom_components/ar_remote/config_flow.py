@@ -502,6 +502,7 @@ class ArRemoteComposer(OptionsFlow):
                 _opt("devices", {"devices": [d["entity"] for d in _devices(act)]}, []): _ent(
                     DEVICE_DOMAINS + PRESS_DOMAINS, multiple=True
                 ),
+                _opt("now_playing", act): _ent("media_player"),
                 _opt("power_on", act): _ent(ACTION_DOMAINS),
             }
         )
@@ -515,7 +516,7 @@ class ArRemoteComposer(OptionsFlow):
         if logo != act.get("logo") or data.get("logo_upload") or (logo and not act.get("logo_rev")):
             act["logo_rev"] = int(time.time()) if logo else None
         act["logo"] = logo
-        for key in ("source", "volume", "dpad", "power_on"):
+        for key in ("source", "volume", "dpad", "power_on", "now_playing"):
             value = data.get(key)
             act[key] = value.strip() if isinstance(value, str) and value.strip() else None
         # Extra devices: keep the input already chosen for any device still listed.

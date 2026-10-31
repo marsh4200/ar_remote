@@ -892,6 +892,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     override fun state(body: JSONObject) {
         live.apply(body)
+        body.optStr("toast")?.let { toast(it) } // e.g. what a colour key did
         refresh()
     }
 

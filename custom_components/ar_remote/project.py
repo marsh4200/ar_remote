@@ -153,8 +153,8 @@ def tracked_entities(config: dict) -> set[str]:
             if room.get(key):
                 ids.add(room[key])
         for act in room.get("activities") or []:
-            for key in ("source", "volume"):
-                if act.get(key):
+            for key in ("source", "volume", "now_playing"):
+                if isinstance(act.get(key), str) and act.get(key):
                     ids.add(act[key])
     return ids
 

@@ -104,7 +104,8 @@
           "dpad": "Navigation remote (D-pad, OK, back)",
           "command_set": "Navigation command set",
           "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
-          "power_on": "Extra action when the activity starts (optional)"
+          "power_on": "Extra action when the activity starts (optional)",
+          "now_playing": "Show what's playing from (optional)"
         },
         "data_description": {
           "volume": "Volume, mute and the volume rocker go here. Leave empty to use the source.",
@@ -113,7 +114,8 @@
           "devices": "Switched on when the activity starts. A button / script is pressed. At Room Off (or when the next activity doesn't use them) they're switched off — a device switched on by a button needs its **turn off with** command on the next page, otherwise Home Assistant can't switch it off.",
           "power_on": "A script or scene to run as well. For lights, delays and more, use the next pages.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
-          "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
+          "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
+          "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source."
         }
       },
       "edit_activity": {
@@ -128,12 +130,14 @@
           "dpad": "Navigation remote (D-pad, OK, back)",
           "command_set": "Navigation command set",
           "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
-          "power_on": "Extra action when the activity starts (optional)"
+          "power_on": "Extra action when the activity starts (optional)",
+          "now_playing": "Show what's playing from (optional)"
         },
         "data_description": {
           "devices": "Switched on when the activity starts. A button / script is pressed. At Room Off (or when the next activity doesn't use them) they're switched off — a device switched on by a button needs its **turn off with** command on the next page, otherwise Home Assistant can't switch it off.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
-          "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker."
+          "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
+          "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source."
         },
         "description": "**Activity step 1 of 4: the devices.**\n\n• **Source**: what you watch or listen to (Apple TV, DStv, Spotify). The D-pad, OK and play keys control it.\n• **Volume device**: what the volume keys control (the amp / soundbar / TV).\n• **Also turn on**: everything else that must come on — projector, screen, subwoofer. Network devices, plugs / relays, or an IR / RF **button** that switches one on.\n\nNext page: which input each one goes to, and how button-controlled devices are switched off."
       },
