@@ -612,22 +612,34 @@ class ArRemoteRuntime:
         for eid in sorted(entity_ids):
             cmd = cmds.get(eid)
             if cmd:
-                if cmd.split(".", 1)[0] in PRESS_DOMAINS:
-                    await self.run_action(cmd)
-                    if report is not None:
-                        report.setdefault("pressed", []).append(cmd)
-                else:
-                    await self._switch_off({cmd}, report)
+                await self._explicit_off(cmd, report)
+            elif listed:
+                # Picked by the installer for an off list: whatever it is, do its "off".
+                await self._explicit_off(eid, report)
             elif eid.split(".", 1)[0] in PRESS_DOMAINS:
-                if listed:
-                    await self.run_action(eid)
-                    if report is not None:
-                        report.setdefault("pressed", []).append(eid)
-                elif eid in devices and report is not None:
+                if eid in devices and report is not None:
                     report.setdefault("cannot_power_off", []).append(f"{eid} (no 'turn off with' set)")
             else:
                 plain.add(eid)
         await self._switch_off(plain, report)
+
+    async def _explicit_off(self, entity_id: str, report: dict | None = None) -> None:
+        """An entity the installer picked as an "off": run / press it, or switch it off."""
+        domain = entity_id.split(".", 1)[0]
+        if domain in PRESS_DOMAINS:
+            await self.run_action(entity_id)  # automation → trigger, script → run, button → press
+            if report is not None:
+                report.setdefault("pressed", []).append(entity_id)
+        elif domain == "cover":
+            await self._call("cover", "close_cover", entity_id)
+            if report is not None:
+                report.setdefault("switched_off", []).append(entity_id)
+        elif domain in OFF_DOMAINS:
+            await self._switch_off({entity_id}, report)
+        else:
+            await self._call("homeassistant", "turn_off", entity_id)
+            if report is not None:
+                report.setdefault("switched_off", []).append(entity_id)
 
     async def _off_or_press(self, entity_ids: set[str]) -> None:
         """For lists the installer picked: switch things off, press buttons / run scripts.

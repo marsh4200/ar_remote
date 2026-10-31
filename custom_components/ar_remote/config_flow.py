@@ -60,6 +60,11 @@ from .const import (
 )
 
 
+def _any(multiple: bool = False) -> EntitySelector:
+    """Any entity at all: an automation, an IR button, a plug, a script …"""
+    return EntitySelector(EntitySelectorConfig(multiple=multiple))
+
+
 def _ent(domain: str | list[str], multiple: bool = False) -> EntitySelector:
     return EntitySelector(EntitySelectorConfig(domain=domain, multiple=multiple))
 
@@ -381,10 +386,8 @@ class ArRemoteComposer(OptionsFlow):
                 _opt("temperature", room): _ent("sensor"),
                 vol.Required("off_lights", default=room.get("off_lights", True)): BooleanSelector(),
                 vol.Required("off_climate", default=room.get("off_climate", False)): BooleanSelector(),
-                _opt("off_extra", room, []): _ent(OFF_PICK_DOMAINS, multiple=True),
-                _opt("off_delayed", {"off_delayed": [d["entity"] for d in _timed(room.get("off_delayed"))]}, []): _ent(
-                    OFF_PICK_DOMAINS, multiple=True
-                ),
+                _opt("off_extra", room, []): _any(multiple=True),
+                _opt("off_delayed", {"off_delayed": [d["entity"] for d in _timed(room.get("off_delayed"))]}, []): _any(multiple=True),
                 vol.Required("off_delay_minutes", default=_number(room.get("off_delay_minutes"), 10)): NumberSelector(
                     NumberSelectorConfig(min=0.5, max=720, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="min")
                 ),
@@ -729,7 +732,9 @@ class ArRemoteComposer(OptionsFlow):
                 devices[eid]["source"] = value.strip() if isinstance(value, str) and value.strip() else None
             for key, eid in self._off_keys.items():
                 value = user_input.get(key)
-                devices[eid]["off"] = value if isinstance(value, str) and "." in value and value != eid else None
+                if isinstance(value, list):  # some HA versions hand back a list
+                    value = value[0] if value else None
+                devices[eid]["off"] = value.strip() if isinstance(value, str) and "." in value and value.strip() != eid else None
             return await self.async_step_actions()
 
         fields: dict = {}
@@ -755,7 +760,7 @@ class ArRemoteComposer(OptionsFlow):
             )
         self._off_keys = self._device_off_keys(act)
         for key, eid in self._off_keys.items():
-            fields[_opt(key, {key: devices[eid].get("off")})] = _ent(OFF_COMMAND_DOMAINS)
+            fields[_opt(key, {key: devices[eid].get("off")})] = _any()
         if not fields:
             return await self.async_step_actions()
         return self.async_show_form(
@@ -795,9 +800,7 @@ class ArRemoteComposer(OptionsFlow):
             return await self.async_step_timers()
         schema = vol.Schema(
             {
-                _opt("off_on_start", {"off_on_start": [d["entity"] for d in _timed(act.get("off_on_start"))]}, []): _ent(
-                    OFF_PICK_DOMAINS, multiple=True
-                ),
+                _opt("off_on_start", {"off_on_start": [d["entity"] for d in _timed(act.get("off_on_start"))]}, []): _any(multiple=True),
                 _opt("pulse", {"pulse": [d["entity"] for d in _timed(act.get("pulse"))]}, []): _ent(
                     DEVICE_DOMAINS, multiple=True
                 ),

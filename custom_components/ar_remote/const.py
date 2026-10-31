@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "ar_remote"
 NAME = "AR Remote"
-VERSION = "2.6.4"
+VERSION = "2.6.5"
 
 CONF_HOST = "host"
 CONF_PORT = "port"
@@ -105,7 +105,7 @@ DEVICE_DOMAINS = [
 # Things that are pressed / run rather than switched: an IR "projector on"
 # button, a script, a scene. They can be in "Also turn on" and in the off lists
 # (a "projector off" button), but never get switched off themselves.
-PRESS_DOMAINS = ["button", "input_button", "script", "scene"]
+PRESS_DOMAINS = ["button", "input_button", "script", "scene", "automation"]
 
 # The ⏪ ⏵ ⏹ ⏩ keys. On the Astrion they carry light / curtain / music / aircon
 # icons, so by default they open those screens.
