@@ -74,6 +74,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         setContentView(root)
 
         store = Store(this)
+        applyTouchSounds()
         wifi = Wifi(this)
         @SuppressLint("HardwareIds")
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "astrion"
@@ -325,6 +326,10 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     fun setQuick(key: String, on: Boolean) {
         when (key) {
             "clock", "pickup", "charging" -> { store.setOverride(key, on); applyDeviceSettings() }
+            "sounds" -> {
+                store.setFlag(key, on)
+                if (!applyTouchSounds()) toast("Run tools/fix-remote once so the remote may change its sounds")
+            }
             else -> store.setFlag(key, on)
         }
         if (key == "clock" && !on && overlay is ClockView) hideOverlay()
@@ -347,6 +352,33 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         window.attributes = window.attributes.apply { screenBrightness = b }
     }
 
+    fun hasVibrator(): Boolean = try {
+        (getSystemService(VIBRATOR_SERVICE) as? android.os.Vibrator)?.hasVibrator() == true
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
+     * "Touch sounds" switches Android's own tap / key click sounds, not just the
+     * app's extra click. Needs WRITE_SETTINGS (granted by tools/fix-remote).
+     * Returns false when the system setting couldn't be changed.
+     */
+    private fun applyTouchSounds(): Boolean {
+        val on = store.flag("sounds", false)
+        var ok = false
+        try {
+            if (Settings.System.canWrite(this)) {
+                Settings.System.putInt(contentResolver, Settings.System.SOUND_EFFECTS_ENABLED, if (on) 1 else 0)
+                ok = true
+            }
+        } catch (_: Exception) {}
+        try {
+            val audio = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+            if (on) audio.loadSoundEffects() else audio.unloadSoundEffects()
+        } catch (_: Exception) {}
+        return ok
+    }
+
     /** Click and / or buzz on each key press (Quick settings). */
     private fun keyFeedback() {
         if (store.flag("sounds", false)) {
@@ -356,7 +388,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         if (store.flag("vibrate", false)) {
             val vib = getSystemService(VIBRATOR_SERVICE) as? android.os.Vibrator
             try {
-                vib?.vibrate(android.os.VibrationEffect.createOneShot(25, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                vib?.vibrate(android.os.VibrationEffect.createOneShot(40, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
             } catch (_: Exception) {}
         }
     }

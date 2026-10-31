@@ -48,6 +48,8 @@ pm grant "$PKG" android.permission.ACCESS_COARSE_LOCATION >/dev/null 2>&1
 appops set "$PKG" WRITE_SETTINGS allow >/dev/null 2>&1
 settings put secure location_mode 3 >/dev/null 2>&1
 cmd location set-location-enabled true >/dev/null 2>&1
+# Touch sounds off to start with; the remote's "Touch sounds" switch turns them on.
+settings put system sound_effects_enabled 0 >/dev/null 2>&1
 echo "  settings panel allowed (Wi-Fi list, screen timeout)"
 am start -n "$PKG/.MainActivity" >/dev/null 2>&1
 sleep 2

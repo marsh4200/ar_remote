@@ -82,13 +82,14 @@ class SettingsScreen(host: Host, back: Screen?) : PanelScreen(host, back) {
 
         // Quick toggles
         parts += ctx.section("Quick")
-        val toggles = listOf(
+        val toggles = listOfNotNull(
             Triple("clock", R.drawable.ic_clock, "Logo clock"),
             Triple("pickup", R.drawable.ic_phone, "Wake on lift"),
             Triple("charging", R.drawable.ic_bolt, "Charge screen"),
-            Triple("night", R.drawable.ic_moon, "Night dim"),
-            Triple("sounds", R.drawable.ic_volume, "Key sounds"),
-            Triple("vibrate", R.drawable.ic_vibrate, "Vibrate"),
+            Triple("night", R.drawable.ic_moon, "Night dim\n22:00–06:00"),
+            Triple("sounds", R.drawable.ic_volume, "Touch sounds"),
+            // Only on remotes that actually have a vibration motor.
+            if (a.hasVibrator()) Triple("vibrate", R.drawable.ic_vibrate, "Vibrate") else null,
         ).map { (key, icon, label) -> toggle(key, icon, label) }
         parts += grid(toggles, 3, 8)
 
@@ -148,7 +149,7 @@ class SettingsScreen(host: Host, back: Screen?) : PanelScreen(host, back) {
             }
         }
         col.addView(ctx.icon(iconRes, if (on) Palette.accent else Palette.muted, 24))
-        col.addView(ctx.label(label, 12f, if (on) Palette.text else Palette.muted, bold = on).apply { maxLines = 1 })
+        col.addView(ctx.label(label, 12f, if (on) Palette.text else Palette.muted, bold = on).apply { maxLines = 2 })
         return col
     }
 }
