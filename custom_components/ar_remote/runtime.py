@@ -393,8 +393,10 @@ class ArRemoteRuntime:
                 return  # opens a screen on the remote; nothing to do here
 
         room_id = msg.get("room")
-        act = self.activity(room_id, self.current.get(room_id))
+        # HA's record first; else the activity the remote says it is showing.
+        act = self.activity(room_id, self.current.get(room_id)) or self.activity(room_id, msg.get("activity"))
         if act is None:
+            _LOGGER.warning("AR Remote: %s pressed in room %s, but no activity is running there", key, room_id)
             return
 
         if key in ("VOLUME_UP", "VOLUME_DOWN", "MUTE"):
@@ -403,6 +405,11 @@ class ArRemoteRuntime:
             return
         if key in COLOR_KEYS:
             slot = (act.get("slots") or {}).get(COLOR_KEYS[key]) or {}
+            if not slot.get("action"):
+                _LOGGER.warning(
+                    "AR Remote: %s pressed in %s, but the %s key has no action set",
+                    key, act.get("name"), COLOR_KEYS[key],
+                )
             await self.run_action(slot.get("action"))
             return
 

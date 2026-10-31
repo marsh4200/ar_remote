@@ -9,7 +9,7 @@ import android.widget.LinearLayout
  * transport keys drive the activity's devices. The touchscreen keeps the
  * source switcher, custom buttons and volume.
  */
-class ActivityScreen(host: Host, private val activityId: String) : Screen(host) {
+class ActivityScreen(host: Host, val activityId: String) : Screen(host) {
     override val name = "activity"
     override val routesToDevice = true
 

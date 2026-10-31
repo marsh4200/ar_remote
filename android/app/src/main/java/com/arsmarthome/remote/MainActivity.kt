@@ -689,7 +689,9 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             return super.dispatchKeyEvent(event)
         }
         val s = screen
-        val act = activeActivity()
+        // On a Watch / Listen screen the keys belong to that activity, even if
+        // the room's state from HA hasn't caught up yet.
+        val act = activeActivity() ?: (s as? ActivityScreen)?.let { room?.activity(it.activityId) }
 
         if (event.action == KeyEvent.ACTION_DOWN) {
             if (event.repeatCount == 0) {
