@@ -25,6 +25,8 @@ class ConfigServer(private val port: Int, private val routes: Routes) {
         fun state(body: JSONObject)
         fun navigate(body: JSONObject)
         fun update(body: JSONObject)
+        /** Send an IR code from the remote's blaster. Runs off the main thread. */
+        fun ir(body: JSONObject)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -124,6 +126,8 @@ class ConfigServer(private val port: Int, private val routes: Routes) {
         method == "POST" && path == "/state" -> ok { routes.state(body) }
         method == "POST" && path == "/navigate" -> ok { routes.navigate(body) }
         method == "POST" && path == "/update" -> ok { routes.update(body) }
+        // Not on the main thread: transmitting blocks for as long as the code lasts.
+        method == "POST" && path == "/ir" -> { routes.ir(body); JSONObject().put("ok", true) }
         else -> JSONObject().put("ok", false).put("error", "unknown route $method $path")
     }
 

@@ -14,6 +14,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The remote's own IR blaster. -->
+    <uses-permission android:name="android.permission.TRANSMIT_IR" />
+    <uses-feature android:name="android.hardware.consumerir" android:required="false" />
     <!-- Lets the app bring itself back to the front after an update (Android 10+). -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 

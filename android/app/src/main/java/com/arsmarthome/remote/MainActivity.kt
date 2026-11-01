@@ -804,14 +804,16 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
                     val now = SystemClock.uptimeMillis()
                     if (now - lastRepeat >= 180) {
                         lastRepeat = now
-                        reportKey(key, event, "repeat", route, s, act)
+                        reportKey(key, event, "repeat", route, s, act, ir = sendIr(key, act))
                     }
                     return true
                 }
                 if (key in consumed) return true
                 return s?.onKey(key, event) == true || super.dispatchKeyEvent(event)
             }
-            reportKey(key, event, "short", route, s, act)
+            // A key the activity has an IR code for leaves the remote's own blaster straight away.
+            val ir = route == "device" && sendIr(key, act)
+            reportKey(key, event, "short", route, s, act, ir = ir)
             val handled = when {
                 key == Key.HOME -> { mainPage(); true }
                 key == Key.POWER -> { roomOff(); true }
@@ -838,7 +840,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
                     reportKey(key, event, "long", "ui", s, act)
                     mainPage()
                 } else {
-                    reportKey(key, event, "short", "device", s, act)
+                    reportKey(key, event, "short", "device", s, act, ir = sendIr(key, act))
                 }
                 return true
             }
@@ -894,7 +896,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         return "ui"
     }
 
-    private fun reportKey(key: Key, event: KeyEvent, press: String, route: String, s: Screen?, act: Activity?) {
+    private fun reportKey(key: Key, event: KeyEvent, press: String, route: String, s: Screen?, act: Activity?, ir: Boolean = false) {
         send(
             "key",
             "key" to key.name,
@@ -903,7 +905,23 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             "route" to route,
             "activity" to act?.id,
             "screen" to s?.name,
+            // Sent by the remote's IR blaster already: HA must not send it again.
+            "ir" to if (ir) "local" else null,
         )
+    }
+
+    /** Fire the activity's IR code for [key] from the remote itself. True when one was sent. */
+    private fun sendIr(key: Key, act: Activity?): Boolean {
+        val code = act?.ir?.get(key.name) ?: return false
+        if (!Ir.available(this)) return false
+        Ir.sendAsync(this, code)
+        return true
+    }
+
+    override fun ir(body: JSONObject) {
+        val code = body.optString("code", "").trim()
+        require(code.isNotEmpty()) { "no IR code" }
+        Ir.send(this, code, body.optInt("repeat", 1))
     }
 
     // ---------------------------------------------------------------- server
@@ -929,6 +947,8 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             .put("doze_exempt", (getSystemService(POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(packageName))
             .put("pickup", waker.mode)
             .put("logo", store.logoUrl ?: "")
+            .put("ir", Ir.available(this))
+            .put("ir_frequencies", org.json.JSONArray(Ir.frequencies(this)))
     }
 
     override fun update(body: JSONObject) {

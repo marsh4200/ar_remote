@@ -17,6 +17,8 @@ data class Activity(
     val colors: Map<String, String>,
     val hasDpad: Boolean,
     val logo: String? = null,
+    /** Key name (UP, VOLUME_UP …) → IR code the remote sends itself. */
+    val ir: Map<String, String> = emptyMap(),
 )
 
 data class Room(
@@ -107,6 +109,9 @@ data class Project(
                         .associateWith { colors?.optString(it, "") ?: "" },
                     hasDpad = a.optBoolean("has_dpad", false),
                     logo = a.optStr("logo"),
+                    ir = a.optJSONObject("ir")?.let { o ->
+                        o.keys().asSequence().associateWith { o.optString(it, "") }.filterValues { it.isNotBlank() }
+                    } ?: emptyMap(),
                 )
             },
             lights = r.optJSONArray("lights").objects().map {

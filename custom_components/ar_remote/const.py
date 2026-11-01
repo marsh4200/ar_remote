@@ -116,3 +116,15 @@ MEDIA_KEYS = {
     "FASTFORWARD": "comfort",
 }
 KEY_MODES = ["lights", "shades", "music", "comfort", "transport", "action"]
+
+# The remote's own IR blaster: key → command names looked up in the activity's
+# IR device (first name that has a code wins).
+IR_KEYS: dict[str, tuple[str, ...]] = {
+    "UP": ("up",), "DOWN": ("down",), "LEFT": ("left",), "RIGHT": ("right",),
+    "CENTER": ("ok", "select", "enter"), "BACK": ("back", "return", "exit"),
+    "MAIN": ("menu",), "HOME": ("home",),
+    "PAGE_UP": ("channel_up",), "PAGE_DOWN": ("channel_down",),
+    "VOLUME_UP": ("volume_up",), "VOLUME_DOWN": ("volume_down",), "MUTE": ("mute",),
+    "REWIND": ("rewind",), "FASTFORWARD": ("fast_forward",),
+    "PLAY": ("play_pause", "play"), "STOP": ("stop",),
+}

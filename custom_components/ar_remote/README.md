@@ -218,3 +218,26 @@ app joins the network itself; on Android 10+ Android asks you to confirm it.
 Run `tools/fix-remote` once on existing remotes so the Wi-Fi list and screen-off
 time work without extra prompts.
 
+
+
+## IR from the remote itself
+
+The Astrion has its own IR blaster. In **Configure → IR devices** add a device (TV, amp,
+projector) and paste its codes, one per line as `name: code`. Codes can be Pronto hex,
+Broadlink learned codes (base64), `nec:<address>:<command>`, `samsung:<address>:<command>`
+or `raw:<hz>:<µs,…>`. Pick the device on an activity under **IR device**: up / down /
+left / right / ok / back / menu / home, volume, mute, channel and play keys then go out
+of the remote's IR straight away.
+
+Home Assistant can send the codes too, from scripts or an activity's power-on:
+
+```yaml
+service: remote.send_command
+target:
+  entity_id: remote.ar_remote_ir_blaster
+data:
+  device: Samsung TV
+  command: power
+```
+
+The remote has to point at the device, like any IR remote.

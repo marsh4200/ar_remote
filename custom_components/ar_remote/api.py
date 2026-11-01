@@ -60,3 +60,7 @@ class RemoteClient:
 
     async def navigate(self, screen: str, room: str | None = None) -> None:
         await self._request("POST", "/navigate", {"screen": screen, "room": room})
+
+    async def ir(self, code: str, repeat: int = 1) -> None:
+        """Send an IR code from the remote's own blaster."""
+        await self._request("POST", "/ir", {"code": code, "repeat": repeat})

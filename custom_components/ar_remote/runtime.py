@@ -438,6 +438,8 @@ class ArRemoteRuntime:
 
         if msg.get("route") != "device" or press == "long":
             return
+        if msg.get("ir") == "local":
+            return  # the remote's own IR blaster already sent this key
 
         # ⏪ ⏵ ⏹ ⏩ set to "Run an action" under Remote settings: works on every screen.
         if key in MEDIA_KEYS:

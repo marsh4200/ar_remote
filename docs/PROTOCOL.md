@@ -27,6 +27,7 @@ key does, what "Room Off" turns off — lives in the integration.
 | POST   | `/project`  | a project (section 3); replaces the stored one and re-renders |
 | POST   | `/state`    | a state message (section 4) |
 | POST   | `/update`   | `{"url":"https://…/ar-remote.apk"}` — the app downloads it and opens Android's install dialog |
+| POST   | `/ir`       | `{"code":"<Pronto hex \| Broadlink base64 \| nec:a:c \| samsung:a:c \| raw:hz:µs,…>","repeat":1}` — sent from the remote's own IR blaster; `{"ok":false,"error":"this remote has no IR blaster"}` if it has none. `/info` reports `"ir":true` and `"ir_frequencies"`. |
 | POST   | `/navigate` | `{"screen":"home"\|"activity"\|"lights"\|"comfort"\|"shades"\|"favourites"\|"rooms","room":"living"}` |
 
 Every reply is `{"ok":true}` or `{"ok":false,"error":"…"}`.
@@ -39,7 +40,7 @@ device's Android ID). The reply is JSON.
 | `type`        | Fields | HA does |
 | ------------- | ------ | ------- |
 | `hello`       | `version`, `project_version` | replies `{"project":{…}\|null,"state":{full state}}` — project only when the app's version differs |
-| `key`         | `key`, `code`, `press` (`short`\|`long`\|`repeat`), `route` (`device`\|`ui`), `room`, `activity`, `screen` | fires `ar_remote_button` + event entity; if `route` is `device`, runs the mapped command |
+| `key`         | `key`, `code`, `press` (`short`\|`long`\|`repeat`), `route` (`device`\|`ui`), `room`, `activity`, `screen`, `ir` (`local` when the remote already sent the key's IR code itself) | fires `ar_remote_button` + event entity; if `route` is `device`, runs the mapped command |
 | `activity`    | `room`, `activity` | starts the activity (powers on source, amp and extra devices, inputs, power-on script, turns off what the previous activity used) |
 | `room_off`    | `room` | everything in the room off (sources, amps, activity devices, lights, off list); keep-running devices switch off after their own timer; then the room off action |
 | `slot`        | `room`, `activity`, `slot` (`custom1..3`, `red`, `green`, `blue`, `yellow`) | runs that slot's action |
@@ -137,3 +138,12 @@ the screen is off). `/info` reports `wake_sensor`, `pickup` and `logo`.
 | `PAGE_UP` `PAGE_DOWN` | 92 93 | channel up/down where the command set has one |
 
 Every press is reported, bound or not, so any key can be automated from HA.
+
+
+## IR (the remote's own blaster)
+
+Each activity in the project may carry `"ir": {"UP": "<code>", "VOLUME_UP": "<code>", …}`,
+compiled from the IR device picked on the activity (Composer → IR devices). When a
+key with a code is pressed while that activity runs, the app transmits it with
+Android's ConsumerIrManager at once and reports the key with `"ir": "local"`, so
+the integration fires the button event but sends nothing itself.
