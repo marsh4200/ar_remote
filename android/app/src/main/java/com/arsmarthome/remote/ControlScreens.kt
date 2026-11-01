@@ -131,7 +131,8 @@ class LightsScreen(host: Host) : Screen(host) {
             col.addView(DimmerView(ctx, lvl) { level, final ->
                 status.text = if (level > 0) "$level%" else "Off"
                 if (final) {
-                    optimistic(light.entity, level)
+                    // Redraw after the touch has finished, not in the middle of it.
+                    android.os.Handler(android.os.Looper.getMainLooper()).post { optimistic(light.entity, level) }
                 }
                 host.send("light", "entity" to light.entity, "action" to "set", "brightness" to level)
             }, matchWrap())

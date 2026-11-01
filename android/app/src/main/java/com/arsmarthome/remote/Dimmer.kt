@@ -72,7 +72,10 @@ class DimmerView(
             MotionEvent.ACTION_CANCEL -> if (dragging) {
                 dragging = false
                 parent?.requestDisallowInterceptTouchEvent(false)
-                onLevel(level, true)
+                // A cancel usually means the page is being torn down right now.
+                // Send the last level afterwards, never from inside the teardown.
+                val last = level
+                android.os.Handler(android.os.Looper.getMainLooper()).post { onLevel(last, true) }
             }
         }
         return true

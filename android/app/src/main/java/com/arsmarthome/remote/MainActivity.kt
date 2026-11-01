@@ -250,8 +250,15 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     private var edgeFromTop = false
     private var swallowGesture = false
 
+    /** A finger is on the screen: never rebuild the page under it (that crashed on long-press). */
+    private var fingerDown = false
+
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
         lastInput = SystemClock.uptimeMillis()
+        when (ev.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> fingerDown = true
+            android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> fingerDown = false
+        }
         when (ev.actionMasked) {
             android.view.MotionEvent.ACTION_DOWN -> {
                 swallowGesture = false
@@ -488,7 +495,8 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         val y = (stage.getChildAt(0) as? android.widget.ScrollView)?.scrollY ?: -1
         val flinging = y != seenScrollY // still moving since the last check
         seenScrollY = y
-        if (idle < 500 || (flinging && idle < 3000)) {
+        // Holding a finger still sends no touch events, so "idle" alone isn't enough.
+        if (fingerDown || idle < 500 || (flinging && idle < 3000)) {
             main.postDelayed({ flushRefresh() }, 150)
             return
         }
@@ -497,7 +505,25 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         render(keepFocus = true)
     }
 
+    private var rendering = false
+
     private fun render(keepFocus: Boolean) {
+        // Removing the old page cancels any touch on it, and a cancelled control may
+        // ask for a redraw. Doing that inside removeAllViews() corrupts the view tree
+        // and crashes the app, so a nested redraw waits for this one to finish.
+        if (rendering) {
+            main.post { render(keepFocus) }
+            return
+        }
+        rendering = true
+        try {
+            renderNow(keepFocus)
+        } finally {
+            rendering = false
+        }
+    }
+
+    private fun renderNow(keepFocus: Boolean) {
         val s = screen ?: return
         val focusedTag = if (keepFocus) currentFocus?.tag else null
         val scrollY = if (keepFocus) firstScrollY() else 0
