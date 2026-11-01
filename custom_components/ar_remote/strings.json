@@ -180,17 +180,21 @@
       },
       "sources": {
         "title": "{activity} — step 2 of 5: inputs, volume and power off",
-        "description": "**What happens when the activity starts:** every device switches on → the remote waits (the **wait** below) so they can wake up → then each device is sent to its input and the volume is set. A device already on the right input is left alone. Leave a field empty to leave that device as it is.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}\n\n**Input missing** (e.g. Game)? A receiver often has several entities (Denon AVR, HEOS, Zone 2) — the inputs of all of them are listed, and the right one is used. Still missing? Type it exactly as Home Assistant shows it and press Enter.\n\n**Turn off with:** for anything switched on by a button (IR projector, screen), pick its **off** button / script. Room Off uses it instead of the on-button. Leave empty for network devices and plugs — they switch off by themselves.",
+        "description": "**What happens when the activity starts:** every device switches on → the remote waits (the **wait** below) so they can wake up → then each device is sent to its input and the volume is set → then, after its own short wait, the amp's **sound mode** (Stereo, Dolby Surround …). A device already on the right input is left alone. Leave a field empty to leave that device as it is.\n\n**Source:** {source}\n**Volume device:** {volume}\n**Also turned on:** {devices}\n\n**Input missing** (e.g. Game)? A receiver often has several entities (Denon AVR, HEOS, Zone 2) — the inputs of all of them are listed, and the right one is used. Still missing? Type it exactly as Home Assistant shows it and press Enter.\n\n**Turn off with:** for anything switched on by a button (IR projector, screen), pick its **off** button / script. Room Off uses it instead of the on-button. Leave empty for network devices and plugs — they switch off by themselves.",
         "data": {
           "source_input": "Source — app or input to open (empty = leave it)",
           "input": "Volume device — input to switch to (empty = stays on whatever it's on)",
           "start_volume": "Volume device — set the volume to (empty = don't change)",
-          "input_delay": "Wait after switching on, before inputs and volume"
+          "input_delay": "Wait after switching on, before inputs and volume",
+          "sound_mode": "Volume device — sound mode (empty = leave it)",
+          "sound_mode_delay": "Wait after the input change, before the sound mode"
         },
         "data_description": {
           "input": "Only if the amp / soundbar also switches the picture or sound source, e.g. a Denon set to GAME or TV AUDIO. Leave empty if it should just stay where it is.",
           "start_volume": "0–100 %. Set when the activity starts. Leave empty to keep the current volume.",
-          "input_delay": "Gives the amp, projector and TV time to wake up after they're switched on. If everything was already on, inputs switch straight away. A device already on the right input is left alone."
+          "input_delay": "Gives the amp, projector and TV time to wake up after they're switched on. If everything was already on, inputs switch straight away. A device already on the right input is left alone.",
+          "sound_mode": "Whatever this amp / soundbar offers: Stereo, Mono, Direct, Dolby Surround, Movie … Not listed? Type it exactly as Home Assistant shows it and press Enter. Left alone if it's already on it.",
+          "sound_mode_delay": "Most amps ignore a sound mode while they're still changing input. With the 7 s wake-up wait and 5 s here, the sound mode goes in about 12 s after the activity starts."
         }
       },
       "actions": {

@@ -764,6 +764,16 @@ class ArRemoteComposer(OptionsFlow):
                         options.append(str(dev["source"]))
         return list(dict.fromkeys(o for o in options if o))
 
+    def _sound_mode_list(self, entity_id: str) -> list[str]:
+        """Sound modes the amp (or another entity of the same receiver) offers."""
+        out: list[str] = []
+        for eid in [entity_id, *self._siblings(entity_id)]:
+            state = self.hass.states.get(eid)
+            listed = state.attributes.get("sound_mode_list") if state is not None else None
+            if isinstance(listed, (list, tuple)):
+                out += [str(x) for x in listed]
+        return list(dict.fromkeys(o for o in out if o))
+
     def _reported_sources(self, entity_id: str) -> list[str]:
         state = self.hass.states.get(entity_id)
         listed = state.attributes.get("source_list") if state is not None else None
@@ -850,6 +860,9 @@ class ArRemoteComposer(OptionsFlow):
                 value = user_input.get(key)
                 act[key] = value.strip() if isinstance(value, str) and value.strip() else None
             act["input_delay"] = max(0.0, min(60.0, _number(user_input.get("input_delay"), 7)))
+            mode = user_input.get("sound_mode")
+            act["sound_mode"] = mode.strip() if isinstance(mode, str) and mode.strip() else None
+            act["sound_mode_delay"] = max(0.0, min(60.0, _number(user_input.get("sound_mode_delay"), 5)))
             vol_level = user_input.get("start_volume")
             act["start_volume"] = (
                 max(0.0, min(100.0, _number(vol_level, 0))) if vol_level not in (None, "") else None
@@ -879,8 +892,19 @@ class ArRemoteComposer(OptionsFlow):
             fields[_opt("start_volume", act)] = NumberSelector(
                 NumberSelectorConfig(min=0, max=100, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="%")
             )
+            modes = self._sound_mode_list(act["volume"])
+            if act.get("sound_mode") and act["sound_mode"] not in modes:
+                modes.append(act["sound_mode"])
+            fields[_opt("sound_mode", act)] = (
+                SelectSelector(SelectSelectorConfig(options=modes, custom_value=True, mode=SelectSelectorMode.DROPDOWN))
+                if modes else TextSelector()
+            )
+            fields[vol.Required("sound_mode_delay", default=_number(act.get("sound_mode_delay"), 5))] = NumberSelector(
+                NumberSelectorConfig(min=0, max=60, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s")
+            )
         else:
             act["start_volume"] = None
+            act["sound_mode"] = None
         if fields:
             fields[vol.Required("input_delay", default=_number(act.get("input_delay"), 7))] = NumberSelector(
                 NumberSelectorConfig(min=0, max=60, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="s")

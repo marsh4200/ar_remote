@@ -46,6 +46,7 @@ _LOGGER = logging.getLogger(__name__)
 
 POLL_INTERVAL = timedelta(seconds=60)
 DEFAULT_INPUT_DELAY = 7.0  # s between powering on and switching inputs
+DEFAULT_SOUND_MODE_DELAY = 5.0  # s between the input change and the sound mode
 MP_TURN_ON = 128  # MediaPlayerEntityFeature.TURN_ON
 MP_TURN_OFF = 256  # MediaPlayerEntityFeature.TURN_OFF
 MP_PAUSE = 1  # MediaPlayerEntityFeature.PAUSE
@@ -824,7 +825,7 @@ class ArRemoteRuntime:
         #    the background so the remote isn't kept waiting and Room Off (or
         #    another activity) can cancel it.
         self._cancel_inputs(room_id)
-        if targets or new.get("start_volume") is not None:
+        if targets or new.get("start_volume") is not None or (new.get("volume") and new.get("sound_mode")):
             delay = 0.0 if targets and all(was_on.values()) else seconds(
                 new.get("input_delay"), DEFAULT_INPUT_DELAY
             )
@@ -872,6 +873,12 @@ class ArRemoteRuntime:
                     await self._call(
                         "media_player", "volume_set", act["volume"], {"volume_level": round(level / 100, 2)}
                     )
+            # Sound mode (Stereo, Dolby Surround …) a few seconds after the input
+            # change: most amps ignore it while they are still switching input.
+            mode = act.get("sound_mode")
+            if act.get("volume") and mode:
+                await asyncio.sleep(seconds(act.get("sound_mode_delay"), DEFAULT_SOUND_MODE_DELAY))
+                await self._select_sound_mode(act["volume"], str(mode))
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001 - a failed input switch must not break the room
@@ -970,6 +977,24 @@ class ArRemoteRuntime:
                 (sib for sib in self._siblings(entity_id) if source in self._sources_of(sib)), entity_id
             )
         await self._call("media_player", "select_source", target, {"source": source})
+
+    def _sound_modes_of(self, entity_id: str) -> list[str]:
+        state = self.hass.states.get(entity_id)
+        listed = state.attributes.get("sound_mode_list") if state is not None else None
+        return [str(x) for x in listed] if isinstance(listed, (list, tuple)) else []
+
+    async def _select_sound_mode(self, entity_id: str, mode: str) -> None:
+        """Set the amp's sound mode, unless it is already on it. Asks a sibling
+        entity of the same receiver if only that one lists the mode."""
+        target = entity_id
+        if mode not in self._sound_modes_of(entity_id):
+            target = next(
+                (sib for sib in self._siblings(entity_id) if mode in self._sound_modes_of(sib)), entity_id
+            )
+        state = self.hass.states.get(target)
+        if state is not None and str(state.attributes.get("sound_mode") or "") == mode:
+            return
+        await self._call("media_player", "select_sound_mode", target, {"sound_mode": mode})
 
     async def _turn_on(self, entity_id: str) -> None:
         domain = entity_id.split(".", 1)[0]
