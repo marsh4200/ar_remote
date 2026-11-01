@@ -37,6 +37,7 @@ from homeassistant.helpers.selector import (
 from homeassistant.util import slugify
 
 from .api import RemoteClient, RemoteError
+from .project import parse_ir_lines
 from .const import (
     ACTION_DOMAINS,
     COMMAND_SETS,
@@ -228,6 +229,8 @@ class ArRemoteComposer(OptionsFlow):
         self._device_keys: dict[str, str] = {}
         self._timer_keys: dict[str, tuple[str, str]] = {}
         self._off_keys: dict[str, str] = {}
+        self._ir_device: str | None = None
+        self._name_keys: dict[str, str] = {}
 
     # ----------------------------------------------------------------- helpers
 
@@ -281,7 +284,7 @@ class ArRemoteComposer(OptionsFlow):
             menu += ["pick_activity", "copy_activity"]
         if self.rooms:
             menu += ["pick_delete"]
-        menu += ["remote_settings", "save"]
+        menu += ["ir_devices", "remote_settings", "save"]
         return self.async_show_menu(
             step_id="init",
             menu_options=menu,
@@ -290,6 +293,73 @@ class ArRemoteComposer(OptionsFlow):
 
     async def async_step_save(self, user_input: dict | None = None) -> ConfigFlowResult:
         return self.async_create_entry(data={CONF_PROJECT: self.project})
+
+    # ------------------------------------------------------------- IR devices
+
+    @property
+    def ir_library(self) -> dict[str, dict[str, str]]:
+        return self.project.setdefault("ir", {})
+
+    async def async_step_ir_devices(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """Pick an IR device to edit, or name a new one."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            picked = user_input.get("device") or "__new__"
+            if picked == "__new__":
+                name = (user_input.get("new_name") or "").strip()
+                if not name:
+                    errors["new_name"] = "ir_name_needed"
+                else:
+                    self._ir_device = name
+                    return await self.async_step_ir_edit()
+            else:
+                self._ir_device = picked
+                return await self.async_step_ir_edit()
+        options = [SelectOptionDict(value=n, label=f"{n} ({len(c)} codes)") for n, c in self.ir_library.items()]
+        options.append(SelectOptionDict(value="__new__", label="➕ New IR device"))
+        schema = vol.Schema(
+            {
+                vol.Required("device", default=options[0]["value"]): _select(options),
+                vol.Optional("new_name"): TextSelector(),
+            }
+        )
+        return self.async_show_form(step_id="ir_devices", data_schema=schema, errors=errors)
+
+    async def async_step_ir_edit(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """One code per line: name: code. Empty = delete the device."""
+        name = self._ir_device or ""
+        errors: dict[str, str] = {}
+        placeholders = {"device": name, "bad": ""}
+        if user_input is not None:
+            text = user_input.get("codes") or ""
+            codes, bad = parse_ir_lines(text)
+            new_name = (user_input.get("name") or name).strip() or name
+            if bad:
+                errors["codes"] = "ir_bad_lines"
+                placeholders["bad"] = ", ".join(bad[:3])
+            else:
+                self.ir_library.pop(name, None)
+                if codes:
+                    self.ir_library[new_name] = codes
+                if new_name != name:
+                    for room in self.rooms:
+                        for act in room.get("activities", []):
+                            if act.get("ir_device") == name:
+                                act["ir_device"] = new_name if codes else None
+                return await self.async_step_init()
+        current = self.ir_library.get(name) or {}
+        text = "\n".join(f"{k}: {v}" for k, v in current.items())
+        schema = vol.Schema(
+            {
+                vol.Required("name", default=name): TextSelector(),
+                vol.Optional("codes", description={"suggested_value": text} if text else None): TextSelector(
+                    TextSelectorConfig(multiline=True)
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="ir_edit", data_schema=schema, errors=errors, description_placeholders=placeholders
+        )
 
     # ---------------------------------------------------------- remote itself
 
@@ -412,6 +482,8 @@ class ArRemoteComposer(OptionsFlow):
             room[key] = list(data.get(key) or [])
         for key in ("climate", "temperature", "off_action"):
             room[key] = data.get(key) or None
+        names = room.get("light_names") if isinstance(room.get("light_names"), dict) else {}
+        room["light_names"] = {e: n for e, n in names.items() if e in room["lights"]}
         room["off_lights"] = bool(data.get("off_lights", True))
         room["off_climate"] = bool(data.get("off_climate", False))
         # The minutes box on this page is the time for every keep-running device;
@@ -432,7 +504,7 @@ class ArRemoteComposer(OptionsFlow):
             self._apply_room(room, user_input)
             self.rooms.append(room)
             self._room_id = room["id"]
-            return await self.async_step_room_timers()
+            return await self.async_step_light_names()
         return self.async_show_form(step_id="add_room", data_schema=self._room_schema({}))
 
     async def async_step_pick_room(self, user_input: dict | None = None) -> ConfigFlowResult:
@@ -450,10 +522,47 @@ class ArRemoteComposer(OptionsFlow):
             return await self.async_step_init()
         if user_input is not None:
             self._apply_room(room, user_input)
-            return await self.async_step_room_timers()
+            return await self.async_step_light_names()
         return self.async_show_form(
             step_id="edit_room",
             data_schema=self._room_schema(room),
+            description_placeholders={"room": room["name"]},
+        )
+
+    async def async_step_light_names(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """Optional name on the remote for each light; empty = Home Assistant's name."""
+        room = self._room(self._room_id)
+        if room is None:
+            return await self.async_step_init()
+        lights = list(room.get("lights") or [])
+        if not lights:
+            return await self.async_step_room_timers()
+        if user_input is not None:
+            names: dict[str, str] = {}
+            for key, eid in self._name_keys.items():
+                value = str(user_input.get(key) or "").strip()
+                if value and value != self._name_of(eid):
+                    names[eid] = value
+            room["light_names"] = names
+            return await self.async_step_room_timers()
+
+        self._name_keys = {}
+        for eid in lights:
+            key = self._name_of(eid)
+            if key in self._name_keys:
+                key = f"{key} ({eid})"
+            self._name_keys[key] = eid
+        current = room.get("light_names") if isinstance(room.get("light_names"), dict) else {}
+        fields = {
+            (
+                vol.Optional(key, description={"suggested_value": current[eid]})
+                if current.get(eid) else vol.Optional(key)
+            ): TextSelector()
+            for key, eid in self._name_keys.items()
+        }
+        return self.async_show_form(
+            step_id="light_names",
+            data_schema=vol.Schema(fields),
             description_placeholders={"room": room["name"]},
         )
 
@@ -517,6 +626,10 @@ class ArRemoteComposer(OptionsFlow):
                 vol.Required("command_set", default=act.get("command_set", "apple_tv")): _select(
                     list(COMMAND_SETS)
                 ),
+                **(
+                    {_opt("ir_device", act): _select(list(self.ir_library))}
+                    if self.ir_library else {}
+                ),
                 _opt("devices", {"devices": [d["entity"] for d in _devices(act)]}, []): _ent(
                     DEVICE_DOMAINS + PRESS_DOMAINS, multiple=True
                 ),
@@ -534,6 +647,9 @@ class ArRemoteComposer(OptionsFlow):
         if logo != act.get("logo") or data.get("logo_upload") or (logo and not act.get("logo_rev")):
             act["logo_rev"] = int(time.time()) if logo else None
         act["logo"] = logo
+        if self.ir_library:
+            device = data.get("ir_device")
+            act["ir_device"] = device if device in self.ir_library else None
         for key in ("source", "volume", "dpad", "power_on", "now_playing"):
             value = data.get(key)
             act[key] = value.strip() if isinstance(value, str) and value.strip() else None

@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 
-from .const import KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
+from .const import IR_KEYS, KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
 
 
 def _name(hass: HomeAssistant, entity_id: str) -> str:
@@ -48,6 +48,7 @@ def compile_project(hass: HomeAssistant, config: dict) -> dict:
         activities = []
         for act in room.get("activities") or []:
             slots = act.get("slots") or {}
+            ir_keys = ir_key_codes(config, act)
             activities.append(
                 {
                     "id": act["id"],
@@ -58,7 +59,8 @@ def compile_project(hass: HomeAssistant, config: dict) -> dict:
                     "volume": act.get("volume") or act.get("source"),
                     "custom": [(slots.get(s) or {}).get("label") or "" for s in SLOTS_CUSTOM],
                     "colors": {s: (slots.get(s) or {}).get("label") or "" for s in SLOTS_COLOR},
-                    "has_dpad": bool(act.get("dpad")),
+                    "has_dpad": bool(act.get("dpad")) or bool(ir_keys),
+                    "ir": ir_keys,
                 }
             )
         climate = room.get("climate")
@@ -69,7 +71,11 @@ def compile_project(hass: HomeAssistant, config: dict) -> dict:
                 "temperature": room.get("temperature"),
                 "activities": activities,
                 "lights": [
-                    {"entity": e, "name": _name(hass, e), "dimmable": _dimmable(hass, e)}
+                    {
+                        "entity": e,
+                        "name": ((room.get("light_names") or {}).get(e) or "").strip() or _name(hass, e),
+                        "dimmable": _dimmable(hass, e),
+                    }
                     for e in _ids(room.get("lights"))
                 ],
                 "scenes": _items(hass, room.get("scenes")),
@@ -219,3 +225,40 @@ def compact_state(state: State | None, base_url: str | None = None) -> dict:
         if unit:
             out["u"] = str(unit)
     return out
+
+
+def ir_codes(config: dict, device: str | None) -> dict[str, str]:
+    """The IR codes stored for one IR device (name → code)."""
+    lib = config.get("ir") or {}
+    codes = lib.get(device) if device else None
+    return {str(k): str(v) for k, v in codes.items() if v} if isinstance(codes, dict) else {}
+
+
+def ir_key_codes(config: dict, act: dict) -> dict[str, str]:
+    """Key → code for the activity's IR device; the remote sends these itself."""
+    codes = {k.lower(): v for k, v in ir_codes(config, act.get("ir_device")).items()}
+    out: dict[str, str] = {}
+    for key, names in IR_KEYS.items():
+        for name in names:
+            if name in codes:
+                out[key] = codes[name]
+                break
+    return out
+
+
+def parse_ir_lines(text: str) -> tuple[dict[str, str], list[str]]:
+    """'name: code' per line → codes, plus the lines that could not be read."""
+    codes: dict[str, str] = {}
+    bad: list[str] = []
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        name, sep, code = line.partition(":")
+        name = name.strip().lower().replace(" ", "_")
+        code = code.strip()
+        if not sep or not name or not code:
+            bad.append(line[:40])
+            continue
+        codes[name] = code
+    return codes, bad

@@ -27,6 +27,7 @@
           "pick_activity": "Edit an activity and its buttons",
           "copy_activity": "Copy an activity (e.g. Netflix → Prime)",
           "pick_delete": "Delete a room or activity",
+          "ir_devices": "IR devices (codes the remote sends itself)",
           "remote_settings": "Remote settings (logo, charging, wake on pick-up)",
           "save": "Save and program the remote"
         }
@@ -105,7 +106,8 @@
           "command_set": "Navigation command set",
           "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
           "power_on": "Extra action when the activity starts (optional)",
-          "now_playing": "Show what's playing from (optional)"
+          "now_playing": "Show what's playing from (optional)",
+          "ir_device": "IR device (sent by the remote's own IR)"
         },
         "data_description": {
           "volume": "Volume, mute and the volume rocker go here. Leave empty to use the source.",
@@ -115,7 +117,8 @@
           "power_on": "A script or scene to run as well. For lights, delays and more, use the next pages.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
-          "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source."
+          "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source.",
+          "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above."
         }
       },
       "edit_activity": {
@@ -131,13 +134,15 @@
           "command_set": "Navigation command set",
           "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
           "power_on": "Extra action when the activity starts (optional)",
-          "now_playing": "Show what's playing from (optional)"
+          "now_playing": "Show what's playing from (optional)",
+          "ir_device": "IR device (sent by the remote's own IR)"
         },
         "data_description": {
           "devices": "Switched on when the activity starts. A button / script is pressed. At Room Off (or when the next activity doesn't use them) they're switched off — a device switched on by a button needs its **turn off with** command on the next page, otherwise Home Assistant can't switch it off.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
-          "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source."
+          "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source.",
+          "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above."
         },
         "description": "**Activity step 1 of 5: the devices.**\n\n• **Source**: what you watch or listen to (Apple TV, DStv, Spotify). The D-pad, OK and play keys control it.\n• **Volume device**: what the volume keys control (the amp / soundbar / TV).\n• **Also turn on**: everything else that must come on — projector, screen, subwoofer. Network devices, plugs / relays, or an IR / RF **button** that switches one on.\n\nNext page: which input each one goes to, and how button-controlled devices are switched off."
       },
@@ -433,10 +438,35 @@
             }
           }
         }
+      },
+      "ir_devices": {
+        "title": "IR devices",
+        "description": "The remote has its own IR blaster. Add each IR-controlled device here (TV, amp, projector, aircon) with its codes, then pick it on an activity under **IR device**: its D-pad, volume and play keys then go out of the remote's IR straight away, no Wi-Fi needed.\n\nHome Assistant can send them too: `remote.send_command` on the remote's **IR blaster** entity, with `device` and `command`.",
+        "data": {
+          "device": "IR device",
+          "new_name": "Name of the new device"
+        },
+        "data_description": {
+          "new_name": "Only for a new device, e.g. Samsung TV or Lounge amp."
+        }
+      },
+      "ir_edit": {
+        "title": "IR codes — {device}",
+        "description": "One code per line: **name: code**. Names the remote's keys use: up, down, left, right, ok, back, menu, home, volume_up, volume_down, mute, channel_up, channel_down, play_pause (or play), stop, rewind, fast_forward. Add any others you like (power, power_on, hdmi1 …) for scripts.\n\nCodes can be:\n• Pronto hex: `0000 006D 0022 0002 0157 00AC …`\n• Broadlink learned code (base64): `JgBQAAABJ5MU…`\n• NEC: `nec:0x04:0x08` (address : command)\n• Samsung: `samsung:0x07:0x02`\n• Raw: `raw:38000:9000,4500,560,560,…`\n\nClear all the codes to delete this device.",
+        "data": {
+          "name": "Device name",
+          "codes": "Codes"
+        }
+      },
+      "light_names": {
+        "title": "{room} — light names on the remote",
+        "description": "Each box is a light in this room, labelled with its Home Assistant name. Type the name you want on the remote (e.g. **Downlights**, **Cove**, **Pool light**). Leave a box empty to use the Home Assistant name."
       }
     },
     "error": {
-      "pin_length": "The PIN must be 4 to 8 digits."
+      "pin_length": "The PIN must be 4 to 8 digits.",
+      "ir_name_needed": "Give the new IR device a name.",
+      "ir_bad_lines": "Some lines aren't name: code — {bad}"
     }
   },
   "selector": {
@@ -529,6 +559,11 @@
       },
       "wake_sensor": {
         "name": "Pick-up sensor"
+      }
+    },
+    "remote": {
+      "ir_blaster": {
+        "name": "IR blaster"
       }
     }
   },
