@@ -32,7 +32,9 @@ interface Host {
     fun refreshNow() = refresh()
     /** An activity's logo (null until loaded, or when it has none). */
     fun logoOf(activity: Activity): android.graphics.Bitmap? = null
-    /** An image from Home Assistant (a custom home icon); null until loaded. */
+    /** The activity's logo with its background tile cut away (icon only). */
+    fun logoCut(activity: Activity): android.graphics.Bitmap? = null
+    /** An image from Home Assistant (a custom home icon) with its background cut away; null until loaded. */
     fun image(path: String?): android.graphics.Bitmap? = null
 }
 

@@ -233,8 +233,11 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     override fun logoOf(activity: Activity): android.graphics.Bitmap? =
         Icons.get(this, store, activity.logo) { refresh() }
 
+    override fun logoCut(activity: Activity): android.graphics.Bitmap? =
+        Icons.getCut(this, store, activity.logo) { refresh() }
+
     override fun image(path: String?): android.graphics.Bitmap? =
-        Icons.get(this, store, path) { refresh() }
+        Icons.getCut(this, store, path) { refresh() }
 
     override fun roomOff(choices: Map<String, Boolean>?) {
         val r = room ?: return

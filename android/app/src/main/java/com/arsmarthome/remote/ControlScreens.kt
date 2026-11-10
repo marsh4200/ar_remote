@@ -39,8 +39,9 @@ class SourcesScreen(host: Host, private val kind: String) : Screen(host) {
             contentDescription = if (on) "${act.name}, playing" else act.name
             clickable { host.startRoomActivity(act) }
         }
-        val size = 92
-        val bmp = host.logoOf(act)
+        // Icons only: just the logo, its tile cut away, a bit bigger.
+        val size = if (iconsOnly) 104 else 92
+        val bmp = host.logoCut(act)
         val art = android.widget.ImageView(ctx).apply {
             if (bmp != null) {
                 setImageBitmap(bmp)

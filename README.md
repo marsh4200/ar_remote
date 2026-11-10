@@ -74,6 +74,13 @@ expects: `apple_tv`, `android_tv`, `roku`, `samsung_tv`, `lg_webos`,
 `ir_generic` (Broadlink / IR learned codes named `up`, `down`, `ok`, `back` …).
 Transport keys fall back to the source media player when the set has no command.
 
+## Changes in 2.9.1
+
+- **Icons only, really.** Uploaded home icons and activity logos have their plain background cut away (a white
+  square, a black square, an app-icon tile with rounded corners, holes inside the icon too) and are trimmed to the
+  icon. A plain black or grey icon is drawn white so it shows on the dark screen; coloured logos keep their colours.
+  The Watch / Listen picker shows the logos this way too (bigger, nothing behind them, in *Icons only*).
+
 ## Changes in 2.9.0
 
 - **No more re-triggering.** Pressing an activity that's already playing (Watch → Lights → back → Netflix) just
