@@ -200,7 +200,8 @@
           "power_on": "Extra action when the activity starts (optional)",
           "now_playing": "Show what's playing from (optional)",
           "ir_device": "IR device (sent by the remote's own IR)",
-          "switch_mode": "Coming from another activity of the same type"
+          "switch_mode": "Coming from another activity of the same type",
+          "icon": "Icon (built-in library)"
         },
         "data_description": {
           "volume": "Volume, mute and the volume rocker go here. Leave empty to use the source.",
@@ -212,7 +213,8 @@
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
           "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source.",
           "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above.",
-          "switch_mode": "E.g. Netflix → Apple TV while watching. **Sources only**: missing devices power on and inputs change; the lights and scene stay as they are. Pressing an activity that's already playing never re-runs anything."
+          "switch_mode": "E.g. Netflix → Apple TV while watching. **Sources only**: missing devices power on and inputs change; the lights and scene stay as they are. Pressing an activity that's already playing never re-runs anything.",
+          "icon": "Shown on the Watch / Listen picker when the activity has no logo of its own (e.g. a realistic Blu-ray player or satellite dish). An uploaded or typed logo wins."
         }
       },
       "edit_activity": {
@@ -230,7 +232,8 @@
           "power_on": "Extra action when the activity starts (optional)",
           "now_playing": "Show what's playing from (optional)",
           "ir_device": "IR device (sent by the remote's own IR)",
-          "switch_mode": "Coming from another activity of the same type"
+          "switch_mode": "Coming from another activity of the same type",
+          "icon": "Icon (built-in library)"
         },
         "data_description": {
           "devices": "Switched on when the activity starts. A button / script is pressed. At Room Off (or when the next activity doesn't use them) they're switched off — a device switched on by a button needs its **turn off with** command on the next page, otherwise Home Assistant can't switch it off.",
@@ -238,7 +241,8 @@
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
           "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source.",
           "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above.",
-          "switch_mode": "E.g. Netflix → Apple TV while watching. **Sources only**: missing devices power on and inputs change; the lights and scene stay as they are. Pressing an activity that's already playing never re-runs anything."
+          "switch_mode": "E.g. Netflix → Apple TV while watching. **Sources only**: missing devices power on and inputs change; the lights and scene stay as they are. Pressing an activity that's already playing never re-runs anything.",
+          "icon": "Shown on the Watch / Listen picker when the activity has no logo of its own (e.g. a realistic Blu-ray player or satellite dish). An uploaded or typed logo wins."
         },
         "description": "**Activity step 1 of 5: the devices.**\n\n• **Source**: what you watch or listen to (Apple TV, DStv, Spotify). The D-pad, OK and play keys control it.\n• **Volume device**: what the volume keys control (the amp / soundbar / TV).\n• **Also turn on**: everything else that must come on — projector, screen, subwoofer. Network devices, plugs / relays, or an IR / RF **button** that switches one on.\n\nNext page: which input each one goes to, and how button-controlled devices are switched off."
       },
@@ -576,26 +580,35 @@
       },
       "home_icons": {
         "title": "Home screen icons",
-        "description": "The room's home page on the remote: **Round** puts each icon in a lit bubble; **Icons only** shows just the icon and its name. Upload your own image for any icon (a PNG with a transparent background works best), or type an address such as `/local/icons/tv.png`. Clear both boxes to go back to the built-in icon. The playing activity and lights that are on are shown in the accent colour.",
+        "description": "The room's home page on the remote: **Round** puts each icon in a lit bubble; **Icons only** shows just the icon and its name.\n\nFor each icon you can pick one from the **built-in library** ({count} icons, realistic and line), upload your own image (its plain background is cut away on the remote), or type an address such as `/local/icons/tv.png`. Your own image wins over a built-in icon; leave all three empty for the standard icon.",
         "data": {
           "home_style": "Look of the room's icons",
+          "icon_set": "Standard icons",
+          "watch_icon": "Watch icon",
+          "watch_upload": "…or upload your own",
           "watch": "…or an image address",
+          "listen_icon": "Listen icon",
+          "listen_upload": "…or upload your own",
           "listen": "…or an image address",
+          "lights_icon": "Lights icon",
+          "lights_upload": "…or upload your own",
           "lights": "…or an image address",
+          "comfort_icon": "Comfort icon",
+          "comfort_upload": "…or upload your own",
           "comfort": "…or an image address",
+          "shades_icon": "Shades icon",
+          "shades_upload": "…or upload your own",
           "shades": "…or an image address",
+          "favourites_icon": "Favourites icon",
+          "favourites_upload": "…or upload your own",
           "favourites": "…or an image address",
-          "room_off": "…or an image address",
-          "watch_upload": "Watch icon — upload",
-          "listen_upload": "Listen icon — upload",
-          "lights_upload": "Lights icon — upload",
-          "comfort_upload": "Comfort icon — upload",
-          "shades_upload": "Shades icon — upload",
-          "favourites_upload": "Favourites icon — upload",
-          "room_off_upload": "Room Off icon — upload"
+          "room_off_icon": "Room Off icon",
+          "room_off_upload": "…or upload your own",
+          "room_off": "…or an image address"
         },
         "data_description": {
-          "home_style": "Built-in icons take the accent colour when active. Your own images are shown as they are."
+          "home_style": "Built-in icons take the accent colour when active. Your own images are shown as they are.",
+          "icon_set": "Used for every icon you don't pick below. **Realistic**: full-colour TV, speaker, bulb, aircon, blinds, star, red power button. **Line**: white outline icons that turn amber when active."
         }
       }
     },
@@ -679,6 +692,12 @@
       "options": {
         "round": "Round bubbles",
         "icons": "Icons only"
+      }
+    },
+    "icon_set": {
+      "options": {
+        "realistic": "Realistic (full colour)",
+        "line": "Line (outline)"
       }
     }
   },

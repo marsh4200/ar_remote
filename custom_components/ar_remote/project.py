@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 
-from .const import HOME_ICONS, HOME_STYLES, IR_KEYS, KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
+from .const import HOME_ICONS, HOME_STYLES, ICON_SETS, IR_KEYS, KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
 
 
 def _name(hass: HomeAssistant, entity_id: str) -> str:
@@ -219,7 +219,7 @@ def compile_project(hass: HomeAssistant, config: dict) -> dict:
 def _versioned(url: str | None, rev: int | None) -> str | None:
     """Add ?v=<save time> so the remote re-downloads a replaced image."""
     url = (url or "").strip() or None
-    if url and rev:
+    if url and rev and not url.startswith("icon:"):  # a built-in icon isn't downloaded
         url = f"{url}{'&' if '?' in url else '?'}v={rev}"
     return url
 
@@ -270,6 +270,7 @@ def compile_device(hass: HomeAssistant, dev: dict) -> dict:
         "clock_x": _pct(dev.get("clock_x")),
         "clock_y": _pct(dev.get("clock_y")),
         "home_style": dev.get("home_style") if dev.get("home_style") in HOME_STYLES else "round",
+        "icon_set": dev.get("icon_set") if dev.get("icon_set") in ICON_SETS else "realistic",
         "icons": {
             cat: _versioned(url, dev.get("icons_rev"))
             for cat, url in (dev.get("icons") or {}).items()

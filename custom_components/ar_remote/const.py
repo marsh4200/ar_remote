@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "ar_remote"
 NAME = "AR Remote"
-VERSION = "2.9.1"
+VERSION = "2.9.2"
 
 CONF_HOST = "host"
 CONF_PORT = "port"
@@ -31,6 +31,8 @@ KINDS = ["watch", "listen"]
 
 # The room home on the remote: round icon bubbles, or the icon on its own.
 HOME_STYLES = ["round", "icons"]
+# The icons used when the installer hasn't picked one: realistic (full colour) or line.
+ICON_SETS = ["realistic", "line"]
 # Home icons the installer can replace with an uploaded image.
 HOME_ICONS = ["watch", "listen", "lights", "comfort", "shades", "favourites", "room_off"]
 # Going from one activity to another of the same kind (Netflix → Apple TV).

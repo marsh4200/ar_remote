@@ -37,6 +37,7 @@ from homeassistant.helpers.selector import (
 from homeassistant.util import slugify
 
 from .api import RemoteClient, RemoteError
+from .icon_library import ICON_LIBRARY
 from .project import OFF_MODES, off_mode, parse_ir_lines, room_off_plan
 from .const import (
     ACTION_DOMAINS,
@@ -57,6 +58,7 @@ from .const import (
     MEDIA_URL,
     HOME_ICONS,
     HOME_STYLES,
+    ICON_SETS,
     PRESS_DOMAINS,
     SWITCH_MODES,
     SLOTS_COLOR,
@@ -83,6 +85,30 @@ def _select(
     if key:
         config["translation_key"] = key
     return SelectSelector(config)
+
+
+NO_ICON = "none"
+
+
+def _icon_select(empty_label: str) -> SelectSelector:
+    """The built-in icon library as a dropdown, grouped by name ("Watch · TV")."""
+    options = [SelectOptionDict(value=NO_ICON, label=empty_label)] + [
+        SelectOptionDict(value=name, label=f"{meta['group']} · {meta['label']}")
+        for name, meta in ICON_LIBRARY.items()
+    ]
+    return _select(options)
+
+
+def _icon_of(value: Any) -> str:
+    """The library name in a stored "icon:<name>" value, else none."""
+    if isinstance(value, str) and value.startswith("icon:") and value[5:] in ICON_LIBRARY:
+        return value[5:]
+    return NO_ICON
+
+
+def _url_of(value: Any) -> str | None:
+    """A stored value that is an image address (not a built-in icon)."""
+    return value if isinstance(value, str) and value and not value.startswith("icon:") else None
 
 
 def _opt(key: str, current: dict, default: Any = None):
@@ -708,8 +734,9 @@ class ArRemoteComposer(OptionsFlow):
                 vol.Required("switch_mode", default=act.get("switch_mode") if act.get("switch_mode") in SWITCH_MODES else "sources"): _select(
                     SWITCH_MODES, dropdown=False, key="switch_mode"
                 ),
+                vol.Required("icon", default=_icon_of(act.get("logo"))): _icon_select("— none: use the logo below —"),
                 vol.Optional("logo_upload"): _upload(),
-                _opt("logo", act): TextSelector(),
+                _opt("logo", {"logo": _url_of(act.get("logo"))}): TextSelector(),
                 _opt("source", act): _ent("media_player"),
                 _opt("volume", act): _ent("media_player"),
                 _opt("dpad", act): _ent("remote"),
@@ -734,7 +761,10 @@ class ArRemoteComposer(OptionsFlow):
         act["kind"] = data.get("kind", "watch")
         act["switch_mode"] = data.get("switch_mode") if data.get("switch_mode") in SWITCH_MODES else "sources"
         act["command_set"] = data.get("command_set", "apple_tv")
+        # Your own logo (uploaded or typed) wins over a built-in icon.
         logo = (data.get("logo") or "").strip() or None
+        if logo is None and data.get("icon") in ICON_LIBRARY:
+            logo = f"icon:{data['icon']}"
         if logo != act.get("logo") or data.get("logo_upload") or (logo and not act.get("logo_rev")):
             act["logo_rev"] = int(time.time()) if logo else None
         act["logo"] = logo
@@ -935,6 +965,7 @@ class ArRemoteComposer(OptionsFlow):
         icons = dev.get("icons") if isinstance(dev.get("icons"), dict) else {}
         if user_input is not None:
             dev["home_style"] = user_input.get("home_style") if user_input.get("home_style") in HOME_STYLES else "round"
+            dev["icon_set"] = user_input.get("icon_set") if user_input.get("icon_set") in ICON_SETS else "realistic"
             new: dict[str, str] = {}
             for cat in HOME_ICONS:
                 if user_input.get(f"{cat}_upload"):
@@ -943,20 +974,31 @@ class ArRemoteComposer(OptionsFlow):
                     )
                 else:
                     url = (user_input.get(cat) or "").strip()
+                # Your own image wins over a built-in icon.
+                if not url and user_input.get(f"{cat}_icon") in ICON_LIBRARY:
+                    url = f"icon:{user_input[f'{cat}_icon']}"
                 if url:
                     new[cat] = url
             dev["icons"] = new
-            dev["icons_rev"] = int(time.time()) if new else None  # re-download on every Submit
+            uploads = any(not v.startswith("icon:") for v in new.values())
+            dev["icons_rev"] = int(time.time()) if uploads else None  # re-download on every Submit
             return await self.async_step_init()
         fields: dict = {
             vol.Required("home_style", default=dev.get("home_style") if dev.get("home_style") in HOME_STYLES else "round"): _select(
                 HOME_STYLES, dropdown=False, key="home_style"
             ),
+            vol.Required("icon_set", default=dev.get("icon_set") if dev.get("icon_set") in ICON_SETS else "realistic"): _select(
+                ICON_SETS, dropdown=False, key="icon_set"
+            ),
         }
         for cat in HOME_ICONS:
+            fields[vol.Required(f"{cat}_icon", default=_icon_of(icons.get(cat)))] = _icon_select("— the standard icon —")
             fields[vol.Optional(f"{cat}_upload")] = _upload()
-            fields[_opt(cat, icons)] = TextSelector()
-        return self.async_show_form(step_id="home_icons", data_schema=vol.Schema(fields))
+            fields[_opt(cat, {cat: _url_of(icons.get(cat))})] = TextSelector()
+        return self.async_show_form(
+            step_id="home_icons", data_schema=vol.Schema(fields),
+            description_placeholders={"count": str(len(ICON_LIBRARY))},
+        )
 
     def _source_list(self, entity_id: str | None) -> list[str]:
         """Inputs the device reports, the one it is on now, and any typed in before."""
