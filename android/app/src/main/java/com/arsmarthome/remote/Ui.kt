@@ -173,16 +173,30 @@ fun Context.bubble(active: Boolean, sizeDp: Int): Drawable = GradientDrawable().
  * A home icon: the installer's own image when one is set (shown as it is),
  * else the built-in vector, accent-coloured when [active].
  */
-fun Context.homeGlyph(custom: android.graphics.Bitmap?, res: Int, active: Boolean, sizeDp: Int): ImageView =
+fun Context.homeGlyph(custom: android.graphics.Bitmap?, res: Int, active: Boolean, sizeDp: Int, tint: Boolean = true): ImageView =
     ImageView(this).apply {
         if (custom != null) {
             setImageBitmap(custom)
             scaleType = ImageView.ScaleType.FIT_CENTER
         } else {
             setImageResource(res)
-            imageTintList = ColorStateList.valueOf(if (active) Palette.accent else Palette.text)
+            if (tint) imageTintList = ColorStateList.valueOf(if (active) Palette.accent else Palette.text)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
         layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp))
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
+
+/**
+ * A built-in library icon, or 0 when [value] isn't one:
+ * "icon:real_tv" → drawable real_tv (realistic, full colour), "icon:tv" → drawable lib_tv (line).
+ */
+fun Context.libraryIcon(value: String?): Int {
+    if (value == null || !value.startsWith("icon:")) return 0
+    val name = value.removePrefix("icon:").filter { it.isLetterOrDigit() || it == '_' }
+    if (name.isEmpty()) return 0
+    return resources.getIdentifier(if (name.startsWith("real_")) name else "lib_$name", "drawable", packageName)
+}
+
+/** A realistic library icon: drawn in its own colours, never tinted. */
+fun isRealIcon(value: String?): Boolean = value?.startsWith("icon:real_") == true

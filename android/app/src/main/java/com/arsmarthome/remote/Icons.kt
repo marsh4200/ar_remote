@@ -31,7 +31,7 @@ object Icons {
 
     /** The logo if it's ready; otherwise loads it and calls [onReady]. */
     fun get(ctx: Context, store: Store, path: String?, onReady: () -> Unit): Bitmap? {
-        if (path.isNullOrBlank() || path in failed) return null
+        if (path.isNullOrBlank() || path in failed || path.startsWith("icon:")) return null
         memory.get(path)?.let { return it }
         val file = File(dir(ctx), key(path))
         if (file.exists()) {

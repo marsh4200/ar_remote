@@ -41,7 +41,8 @@ class SourcesScreen(host: Host, private val kind: String) : Screen(host) {
         }
         // Icons only: just the logo, its tile cut away, a bit bigger.
         val size = if (iconsOnly) 104 else 92
-        val bmp = host.logoCut(act)
+        val lib = ctx.libraryIcon(act.logo)
+        val bmp = if (lib == 0) host.logoCut(act) else null
         val art = android.widget.ImageView(ctx).apply {
             if (bmp != null) {
                 setImageBitmap(bmp)
@@ -49,10 +50,13 @@ class SourcesScreen(host: Host, private val kind: String) : Screen(host) {
                 val pad = if (iconsOnly) 0 else ctx.dp(18)
                 setPadding(pad, pad, pad, pad)
             } else {
-                setImageResource(if (kind == "listen") R.drawable.ic_listen else R.drawable.ic_watch)
-                imageTintList = android.content.res.ColorStateList.valueOf(if (on) Palette.accent else Palette.text)
-                scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
-                setPadding(ctx.dp(24), ctx.dp(24), ctx.dp(24), ctx.dp(24))
+                setImageResource(if (lib != 0) lib else if (kind == "listen") R.drawable.ic_listen else R.drawable.ic_watch)
+                // Realistic icons keep their colours; line icons are tinted like the app's own.
+                val real = isRealIcon(act.logo)
+                if (!real) imageTintList = android.content.res.ColorStateList.valueOf(if (on) Palette.accent else Palette.text)
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                val pad = ctx.dp(if (iconsOnly) (if (real) 0 else 14) else if (real) 16 else 24)
+                setPadding(pad, pad, pad, pad)
             }
             if (!iconsOnly) {
                 background = ctx.bubble(on, size)

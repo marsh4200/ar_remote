@@ -15,6 +15,17 @@ class HomeScreen(host: Host) : Screen(host) {
     private val device get() = host.project?.device ?: DeviceSettings()
     private val iconsOnly get() = device.homeStyle == "icons"
 
+    /** The icon for a home spot: the installer's pick, else the realistic set's one (if that set is on). */
+    private fun iconFor(key: String): String? =
+        device.icons[key] ?: if (device.iconSet == "realistic") REALISTIC[key]?.let { "icon:$it" } else null
+
+    private companion object {
+        val REALISTIC = mapOf(
+            "watch" to "real_tv", "listen" to "real_speaker", "lights" to "real_bulb", "comfort" to "real_aircon",
+            "shades" to "real_blinds", "favourites" to "real_star", "room_off" to "real_power",
+        )
+    }
+
     override fun build(): View {
         val room = host.room ?: return page(empty("No rooms programmed yet.\nAdd rooms in Home Assistant → AR Remote → Configure."))
         val live = host.live
@@ -110,13 +121,16 @@ class HomeScreen(host: Host) : Screen(host) {
         parts += grid(tiles, columns, 14, rowHeightDp = rowDp)
 
         // Room off
-        val custom = host.image(device.icons["room_off"])
+        val offIcon = iconFor("room_off")
+        val offLib = ctx.libraryIcon(offIcon)
+        val custom = if (offLib == 0) host.image(offIcon) else null
         val off = ctx.row(10).apply {
             gravity = Gravity.CENTER
             background = ctx.focusBg(Palette.dangerBg, 32)
             minimumHeight = ctx.dp(64)
             if (custom != null) addView(ctx.homeGlyph(custom, R.drawable.ic_power, false, 26))
-            else addView(ctx.icon(R.drawable.ic_power, Palette.danger, 22))
+            else if (offLib != 0 && isRealIcon(offIcon)) addView(ctx.homeGlyph(null, offLib, false, 30, tint = false))
+            else addView(ctx.icon(if (offLib != 0) offLib else R.drawable.ic_power, Palette.danger, 22))
             addView(ctx.label("Room Off", 18f, Palette.danger, bold = true))
             tag = "room-off"
             contentDescription = "Room Off"
@@ -165,7 +179,15 @@ class HomeScreen(host: Host) : Screen(host) {
                 setPadding(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))
                 layoutParams = LinearLayout.LayoutParams(ctx.dp(52), ctx.dp(52))
             }
-        } else ctx.icon(if (act.kind == "listen") R.drawable.ic_listen else R.drawable.ic_watch, Palette.ground, 26).apply {
+        } else if (isRealIcon(act.logo) && ctx.libraryIcon(act.logo) != 0) {
+            ctx.homeGlyph(null, ctx.libraryIcon(act.logo), false, 52, tint = false).apply {
+                background = ctx.rounded(Palette.ground, 14)
+                setPadding(ctx.dp(5), ctx.dp(5), ctx.dp(5), ctx.dp(5))
+            }
+        } else ctx.icon(
+            ctx.libraryIcon(act.logo).takeIf { it != 0 } ?: if (act.kind == "listen") R.drawable.ic_listen else R.drawable.ic_watch,
+            Palette.ground, 26,
+        ).apply {
             background = ctx.rounded(Palette.accent, 14)
             setPadding(ctx.dp(13), ctx.dp(13), ctx.dp(13), ctx.dp(13))
             layoutParams = LinearLayout.LayoutParams(ctx.dp(52), ctx.dp(52))
@@ -194,17 +216,27 @@ class HomeScreen(host: Host) : Screen(host) {
             contentDescription = "${spec.title}, ${spec.sub}"
             clickable { spec.onClick() }
         }
-        val custom = host.image(device.icons[spec.key])
+        // A built-in library icon replaces the standard glyph (and is tinted like it);
+        // your own image is shown as it is, background cut away.
+        val chosen = iconFor(spec.key)
+        val lib = ctx.libraryIcon(chosen)
+        val res = if (lib != 0) lib else spec.res
+        val real = lib != 0 && isRealIcon(chosen)
+        val custom = if (lib == 0) host.image(chosen) else null
         if (iconsOnly) {
             // Icon only: bigger glyph, nothing behind it.
             val size = (bubbleDp * 0.72).toInt()
-            col.addView(ctx.homeGlyph(custom, spec.res, spec.active, size))
+            col.addView(ctx.homeGlyph(custom, res, spec.active, if (real) (bubbleDp * 0.9).toInt() else size, tint = !real))
         } else {
             val bubble = FrameLayout(ctx).apply {
                 background = ctx.bubble(spec.active, bubbleDp)
                 elevation = ctx.dp(6).toFloat()
             }
-            val glyph = ctx.homeGlyph(custom, spec.res, spec.active, if (custom != null) (bubbleDp * 0.62).toInt() else (bubbleDp * 0.44).toInt())
+            val glyph = ctx.homeGlyph(
+                custom, res, spec.active,
+                if (custom != null || real) (bubbleDp * 0.66).toInt() else (bubbleDp * 0.44).toInt(),
+                tint = !real,
+            )
             bubble.addView(glyph, FrameLayout.LayoutParams(glyph.layoutParams.width, glyph.layoutParams.height, Gravity.CENTER))
             col.addView(bubble, LinearLayout.LayoutParams(ctx.dp(bubbleDp), ctx.dp(bubbleDp)))
         }

@@ -82,6 +82,8 @@ data class DeviceSettings(
     val clockFor: Int = 0,
     /** Room home: "round" icon bubbles or "icons" only. */
     val homeStyle: String = "round",
+    /** Icons used where the installer picked none: "realistic" (full colour) or "line". */
+    val iconSet: String = "realistic",
     /** Home icon (watch, listen, lights, comfort, shades, favourites, room_off) → image address. */
     val icons: Map<String, String> = emptyMap(),
 ) {
@@ -104,6 +106,7 @@ data class DeviceSettings(
                     o.keys().asSequence().associateWith { o.optString(it, "") }
                 } ?: emptyMap(),
                 homeStyle = if (d.optString("home_style", "round") == "icons") "icons" else "round",
+                iconSet = if (d.optString("icon_set", "realistic") == "line") "line" else "realistic",
                 icons = d.optJSONObject("icons")?.let { o ->
                     o.keys().asSequence().associateWith { o.optString(it, "") }.filterValues { it.isNotBlank() }
                 } ?: emptyMap(),
