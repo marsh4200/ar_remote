@@ -19,41 +19,58 @@ class SourcesScreen(host: Host, private val kind: String) : Screen(host) {
         return page(
             header(room.name, if (kind == "listen") "Listen" else "Watch"),
             ctx.label(ask, 15f, Palette.soft),
-            grid(tiles, 2, 12),
+            grid(tiles, 3, 12),
             scroll = true,
         )
     }
 
-    /** Big logo tile: the activity's logo (or the Watch / Listen icon) and its name. */
+    private val iconsOnly get() = host.project?.device?.homeStyle == "icons"
+
+    /**
+     * Round logo (C4-style) and its name. Tapping the one that's playing just opens
+     * its screen — Home Assistant doesn't re-run it; another one only switches sources.
+     */
     private fun tile(act: Activity, on: Boolean): View {
-        val col = ctx.column(10).apply {
+        val col = ctx.column().apply {
             gravity = Gravity.CENTER_HORIZONTAL
-            background = ctx.focusBg(if (on) Palette.raised else Palette.surface, 20)
-            setPadding(ctx.dp(10), ctx.dp(12), ctx.dp(10), ctx.dp(12))
+            background = ctx.focusBg(android.graphics.Color.TRANSPARENT, 24)
+            setPadding(ctx.dp(4), ctx.dp(8), ctx.dp(4), ctx.dp(8))
             tag = "act-${act.id}"
-            contentDescription = act.name
+            contentDescription = if (on) "${act.name}, playing" else act.name
             clickable { host.startRoomActivity(act) }
         }
+        val size = 92
+        val bmp = host.logoOf(act)
         val art = android.widget.ImageView(ctx).apply {
-            val bmp = host.logoOf(act)
             if (bmp != null) {
                 setImageBitmap(bmp)
                 scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-                setPadding(ctx.dp(6), ctx.dp(6), ctx.dp(6), ctx.dp(6))
+                val pad = if (iconsOnly) 0 else ctx.dp(18)
+                setPadding(pad, pad, pad, pad)
             } else {
                 setImageResource(if (kind == "listen") R.drawable.ic_listen else R.drawable.ic_watch)
-                imageTintList = android.content.res.ColorStateList.valueOf(Palette.accent)
+                imageTintList = android.content.res.ColorStateList.valueOf(if (on) Palette.accent else Palette.text)
                 scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
-                setPadding(ctx.dp(26), ctx.dp(26), ctx.dp(26), ctx.dp(26))
+                setPadding(ctx.dp(24), ctx.dp(24), ctx.dp(24), ctx.dp(24))
             }
-            background = ctx.rounded(Palette.ground, 16)
-            clipToOutline = true
+            if (!iconsOnly) {
+                background = ctx.bubble(on, size)
+                clipToOutline = true
+                elevation = ctx.dp(6).toFloat()
+            }
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
-        col.addView(art, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ctx.dp(96)))
-        val label = ctx.row(6).apply { gravity = Gravity.CENTER }
-        label.addView(ctx.label(act.name, 16f, bold = true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-        if (on) label.addView(ctx.label("On", 11f, Palette.accent, bold = true, caps = true))
-        col.addView(label, matchWrap())
+        col.addView(art, LinearLayout.LayoutParams(ctx.dp(size), ctx.dp(size)))
+        col.addView(ctx.label(act.name, 15f, bold = true).apply {
+            gravity = Gravity.CENTER
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, ctx.dp(10), 0, 0)
+        }, matchWrap())
+        col.addView(ctx.label(if (on) "Playing" else " ", 11f, Palette.accent, bold = true, caps = true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, ctx.dp(3), 0, 0)
+        }, matchWrap())
         return col
     }
 }

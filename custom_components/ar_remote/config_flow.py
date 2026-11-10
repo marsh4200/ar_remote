@@ -37,7 +37,7 @@ from homeassistant.helpers.selector import (
 from homeassistant.util import slugify
 
 from .api import RemoteClient, RemoteError
-from .project import parse_ir_lines
+from .project import OFF_MODES, off_mode, parse_ir_lines, room_off_plan
 from .const import (
     ACTION_DOMAINS,
     COMMAND_SETS,
@@ -55,7 +55,10 @@ from .const import (
     MEDIA_KEYS,
     MEDIA_DIR,
     MEDIA_URL,
+    HOME_ICONS,
+    HOME_STYLES,
     PRESS_DOMAINS,
+    SWITCH_MODES,
     SLOTS_COLOR,
     SLOTS_CUSTOM,
 )
@@ -231,6 +234,8 @@ class ArRemoteComposer(OptionsFlow):
         self._off_keys: dict[str, str] = {}
         self._ir_device: str | None = None
         self._name_keys: dict[str, str] = {}
+        # Editing from the activity's overview page: each page goes back to it.
+        self._overview = False
 
     # ----------------------------------------------------------------- helpers
 
@@ -277,6 +282,7 @@ class ArRemoteComposer(OptionsFlow):
     # -------------------------------------------------------------------- menu
 
     async def async_step_init(self, user_input: dict | None = None) -> ConfigFlowResult:
+        self._overview = False
         menu = ["add_room"]
         if self.rooms:
             menu += ["pick_room", "add_activity"]
@@ -284,7 +290,7 @@ class ArRemoteComposer(OptionsFlow):
             menu += ["pick_activity", "copy_activity"]
         if self.rooms:
             menu += ["pick_delete"]
-        menu += ["ir_devices", "remote_settings", "save"]
+        menu += ["ir_devices", "home_icons", "remote_settings", "save"]
         return self.async_show_menu(
             step_id="init",
             menu_options=menu,
@@ -455,37 +461,87 @@ class ArRemoteComposer(OptionsFlow):
 
     # ------------------------------------------------------------------- rooms
 
+    # Room Off boxes on the room page: field -> box (a form section).
+    ROOM_OFF_SECTIONS = {
+        "off_ask": "room_off",
+        "off_extra": "turns_off",
+        "off_action": "turns_off",
+        "off_lights_mode": "your_choice",
+        "off_climate_mode": "your_choice",
+        "off_choice_off": "your_choice",
+        "off_choice_on": "your_choice",
+        "off_delayed": "stays_on",
+        "off_delay_minutes": "stays_on",
+        "off_never": "never_touched",
+    }
+
     def _room_schema(self, room: dict) -> vol.Schema:
-        return vol.Schema(
-            {
-                vol.Required("name", default=room.get("name", "")): TextSelector(),
-                _opt("lights", room, []): _ent(["light", "switch", "input_boolean", "fan"], multiple=True),
-                _opt("scenes", room, []): _ent(["scene", "script"], multiple=True),
-                _opt("climate", room): _ent("climate"),
-                _opt("covers", room, []): _ent("cover", multiple=True),
-                _opt("favourites", room, []): _ent(ACTION_DOMAINS, multiple=True),
-                _opt("temperature", room): _ent("sensor"),
-                vol.Required("off_lights", default=room.get("off_lights", True)): BooleanSelector(),
-                vol.Required("off_climate", default=room.get("off_climate", False)): BooleanSelector(),
+        fields: dict = {
+            vol.Required("name", default=room.get("name", "")): TextSelector(),
+            _opt("lights", room, []): _ent(["light", "switch", "input_boolean", "fan"], multiple=True),
+            _opt("scenes", room, []): _ent(["scene", "script"], multiple=True),
+            _opt("climate", room): _ent("climate"),
+            _opt("covers", room, []): _ent("cover", multiple=True),
+            _opt("favourites", room, []): _ent(ACTION_DOMAINS, multiple=True),
+            _opt("temperature", room): _ent("sensor"),
+        }
+        off: dict[str, dict] = {
+            "room_off": {
+                vol.Required("off_ask", default=bool(room.get("off_ask", True))): BooleanSelector(),
+            },
+            "turns_off": {
                 _opt("off_extra", room, []): _any(multiple=True),
+                _opt("off_action", room): _ent(ACTION_DOMAINS),
+            },
+            "your_choice": {
+                vol.Required("off_lights_mode", default=off_mode(room, "lights")): _select(OFF_MODES, key="off_mode"),
+                vol.Required("off_climate_mode", default=off_mode(room, "climate")): _select(OFF_MODES, key="off_mode"),
+                _opt("off_choice_off", room, []): _any(multiple=True),
+                _opt("off_choice_on", room, []): _any(multiple=True),
+            },
+            "stays_on": {
                 _opt("off_delayed", {"off_delayed": [d["entity"] for d in _timed(room.get("off_delayed"))]}, []): _any(multiple=True),
                 vol.Required("off_delay_minutes", default=_number(room.get("off_delay_minutes"), 10)): NumberSelector(
                     NumberSelectorConfig(min=0.5, max=720, step=0.5, mode=NumberSelectorMode.BOX, unit_of_measurement="min")
                 ),
-                _opt("off_action", room): _ent(ACTION_DOMAINS),
-            }
-        )
+            },
+            "never_touched": {
+                _opt("off_never", room, []): _any(multiple=True),
+            },
+        }
+        for name, inner in off.items():
+            if section is not None:
+                fields[vol.Optional(name, default={})] = section(vol.Schema(inner), {"collapsed": False})
+            else:
+                fields.update(inner)
+        return vol.Schema(fields)
+
+    @classmethod
+    def _flat(cls, data: dict) -> dict:
+        """The room page's boxes (form sections) folded back into one dict."""
+        out = {k: v for k, v in data.items() if not isinstance(v, dict)}
+        for value in data.values():
+            if isinstance(value, dict):
+                out.update(value)
+        return out
 
     def _apply_room(self, room: dict, data: dict) -> None:
+        data = self._flat(data)
         room["name"] = (data.get("name") or "").strip() or room.get("name") or "Room"
-        for key in ("lights", "scenes", "covers", "favourites", "off_extra"):
+        for key in ("lights", "scenes", "covers", "favourites", "off_extra", "off_choice_off", "off_choice_on", "off_never"):
             room[key] = list(data.get(key) or [])
         for key in ("climate", "temperature", "off_action"):
             room[key] = data.get(key) or None
         names = room.get("light_names") if isinstance(room.get("light_names"), dict) else {}
         room["light_names"] = {e: n for e, n in names.items() if e in room["lights"]}
-        room["off_lights"] = bool(data.get("off_lights", True))
-        room["off_climate"] = bool(data.get("off_climate", False))
+        room["off_ask"] = bool(data.get("off_ask", True))
+        for what in ("lights", "climate"):
+            mode = data.get(f"off_{what}_mode")
+            if mode not in OFF_MODES:  # an older form: the plain on/off box
+                legacy = data.get(f"off_{what}")
+                mode = off_mode({f"off_{what}": legacy if legacy is not None else what == "lights"}, what)
+            room[f"off_{what}_mode"] = mode
+            room[f"off_{what}"] = mode != "never"  # older apps / readers
         # The minutes box on this page is the time for every keep-running device;
         # a device given its own time on the next page keeps it.
         old_default = _number(room.get("off_delay_minutes"), 10)
@@ -498,6 +554,34 @@ class ArRemoteComposer(OptionsFlow):
             if eid
         ]
 
+    def _room_plan(self, room: dict) -> str:
+        """The room's Room Off in four lines, for the top of the room page."""
+        if not room:
+            return "Fill in the room, then Submit — this summary shows what Room Off will do."
+        plan = room_off_plan(room)
+        lights = set(room.get("lights") or [])
+
+        def names(ents) -> str:
+            ents = set(ents)
+            out = []
+            if lights and lights <= ents:
+                out.append("all lights")
+                ents -= lights
+            out += sorted(self._name_of(e) for e in ents)
+            return ", ".join(out) or "—"
+
+        choice = []
+        for c in plan["choices"]:
+            label = "Lights" if c["id"] == "lights" else "Aircon" if c["id"] == "climate" else self._name_of(c["id"])
+            choice.append(f"{label} ({'off' if c['default_off'] else 'left on'} by default)")
+        stays = [f"{self._name_of(e)} {m:g} min" for e, m in plan["delayed"].items()]
+        return (
+            f"🔴 **Turns off:** {names((plan['plain'] | plan['listed']) - set(plan['delayed']))}\n"
+            f"🟠 **Your choice:** {', '.join(choice) or '—'}\n"
+            f"🔵 **Stays on for a bit:** {', '.join(stays) or '—'}\n"
+            f"🟢 **Never touched:** {names(plan['never']) if plan['never'] else '—'}"
+        )
+
     async def async_step_add_room(self, user_input: dict | None = None) -> ConfigFlowResult:
         if user_input is not None:
             room = {"id": _unique_id(user_input["name"], {r["id"] for r in self.rooms}), "activities": []}
@@ -505,7 +589,10 @@ class ArRemoteComposer(OptionsFlow):
             self.rooms.append(room)
             self._room_id = room["id"]
             return await self.async_step_light_names()
-        return self.async_show_form(step_id="add_room", data_schema=self._room_schema({}))
+        return self.async_show_form(
+            step_id="add_room", data_schema=self._room_schema({}),
+            description_placeholders={"plan": self._room_plan({})},
+        )
 
     async def async_step_pick_room(self, user_input: dict | None = None) -> ConfigFlowResult:
         if user_input is not None:
@@ -526,7 +613,7 @@ class ArRemoteComposer(OptionsFlow):
         return self.async_show_form(
             step_id="edit_room",
             data_schema=self._room_schema(room),
-            description_placeholders={"room": room["name"]},
+            description_placeholders={"room": room["name"], "plan": self._room_plan(room)},
         )
 
     async def async_step_light_names(self, user_input: dict | None = None) -> ConfigFlowResult:
@@ -618,6 +705,9 @@ class ArRemoteComposer(OptionsFlow):
             {
                 vol.Required("name", default=act.get("name", "")): TextSelector(),
                 vol.Required("kind", default=act.get("kind", "watch")): _select(KINDS, dropdown=False, key="kind"),
+                vol.Required("switch_mode", default=act.get("switch_mode") if act.get("switch_mode") in SWITCH_MODES else "sources"): _select(
+                    SWITCH_MODES, dropdown=False, key="switch_mode"
+                ),
                 vol.Optional("logo_upload"): _upload(),
                 _opt("logo", act): TextSelector(),
                 _opt("source", act): _ent("media_player"),
@@ -642,6 +732,7 @@ class ArRemoteComposer(OptionsFlow):
     def _apply_activity(self, act: dict, data: dict) -> None:
         act["name"] = data["name"].strip()
         act["kind"] = data.get("kind", "watch")
+        act["switch_mode"] = data.get("switch_mode") if data.get("switch_mode") in SWITCH_MODES else "sources"
         act["command_set"] = data.get("command_set", "apple_tv")
         logo = (data.get("logo") or "").strip() or None
         if logo != act.get("logo") or data.get("logo_upload") or (logo and not act.get("logo_rev")):
@@ -691,7 +782,7 @@ class ArRemoteComposer(OptionsFlow):
     async def async_step_pick_activity(self, user_input: dict | None = None) -> ConfigFlowResult:
         if user_input is not None:
             self._room_id, self._act_id = user_input["activity"].split("/", 1)
-            return await self.async_step_edit_activity()
+            return await self.async_step_activity_menu()
         return self.async_show_form(
             step_id="pick_activity",
             data_schema=vol.Schema({vol.Required("activity"): _select(self._activity_options())}),
@@ -713,7 +804,7 @@ class ArRemoteComposer(OptionsFlow):
             copy_["logo_rev"] = None
             acts.append(copy_)
             self._room_id, self._act_id = target["id"], copy_["id"]
-            return await self.async_step_edit_activity()
+            return await self.async_step_activity_menu()
         return self.async_show_form(
             step_id="copy_activity",
             data_schema=vol.Schema(
@@ -732,12 +823,140 @@ class ArRemoteComposer(OptionsFlow):
         if user_input is not None:
             await self._take_upload(user_input, f"{self._room_id}_{act['id']}")
             self._apply_activity(act, user_input)
-            return await self.async_step_sources()
+            return await self._after("sources")
         return self.async_show_form(
             step_id="edit_activity",
             data_schema=self._activity_schema(act, with_room=False),
             description_placeholders={"activity": act["name"]},
         )
+
+    async def _after(self, step: str) -> ConfigFlowResult:
+        """Next page: the activity's overview when editing from it, else the next step."""
+        if self._overview:
+            return await self.async_step_activity_menu()
+        return await getattr(self, f"async_step_{step}")()
+
+    async def async_step_activity_menu(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """One activity at a glance: what turns on, which sources, the scene — then edit any part."""
+        act = self._activity(self._room_id, self._act_id)
+        room = self._room(self._room_id)
+        if act is None or room is None:
+            return await self.async_step_init()
+        self._overview = True
+        return self.async_show_menu(
+            step_id="activity_menu",
+            menu_options=["edit_activity", "sources", "start_steps", "end_steps", "buttons", "init"],
+            description_placeholders={
+                "activity": act["name"],
+                "room": room["name"],
+                "kind": "Listen" if act.get("kind") == "listen" else "Watch",
+                "summary": self._activity_summary(act),
+            },
+        )
+
+    def _steps_text(self, steps: list) -> list[str]:
+        out = []
+        for st in steps if isinstance(steps, list) else []:
+            if not isinstance(st, dict):
+                continue
+            ents = ", ".join(self._name_of(e) for e in st.get("entities") or []) or "(pause)"
+            do = st.get("do") or "on"
+            what = {
+                "on": "on", "off": "off", "toggle": "toggle", "press": "press / run",
+                "dim": f"dim to {st.get('level') or 50} %",
+            }.get(do, do)
+            line = f"• {ents} → {what}" if st.get("entities") else "• pause"
+            wait = _number(st.get("wait"), 0)
+            if wait > 0:
+                line += f", then wait {wait:g} s"
+            out.append(line)
+        return out
+
+    def _activity_summary(self, act: dict) -> str:
+        """The overview text: 1 turn on · 2 change sources · 3 set the scene · switched off."""
+        kind = "Listen" if act.get("kind") == "listen" else "Watch"
+        on: list[str] = []
+        if act.get("source"):
+            on.append(f"• **{self._name_of(act['source'])}** — the source (D-pad, OK, play)")
+        if act.get("volume") and act.get("volume") != act.get("source"):
+            on.append(f"• **{self._name_of(act['volume'])}** — volume keys")
+        for dev in _devices(act):
+            off = f" · off with {self._name_of(dev['off'])}" if dev.get("off") else ""
+            on.append(f"• **{self._name_of(dev['entity'])}**{off}")
+        if act.get("power_on"):
+            on.append(f"• runs {self._name_of(act['power_on'])}")
+
+        src: list[str] = []
+        if act.get("source") and act.get("source_input"):
+            src.append(f"• {self._name_of(act['source'])} → **{act['source_input']}**")
+        if act.get("volume"):
+            bits = []
+            if act.get("input"):
+                bits.append(f"**{act['input']}**")
+            if act.get("start_volume") is not None:
+                bits.append(f"volume {act['start_volume']:g} %")
+            if act.get("sound_mode"):
+                bits.append(f"{act['sound_mode']} (+{_number(act.get('sound_mode_delay'), 5):g} s)")
+            if bits:
+                src.append(f"• {self._name_of(act['volume'])} → " + " · ".join(bits))
+        for dev in _devices(act):
+            if dev.get("source"):
+                src.append(f"• {self._name_of(dev['entity'])} → **{dev['source']}**")
+
+        scene = self._steps_text(act.get("start_steps"))
+        end = self._steps_text(act.get("end_steps"))
+        switch = (
+            "everything runs again, step 3 included"
+            if act.get("switch_mode") == "full"
+            else "**only the sources change** — the lights and scene stay as they are"
+        )
+        wait = _number(act.get("input_delay"), 7)
+        return "\n".join([
+            f"**① Turn on** — the moment you press it",
+            *(on or ["• nothing yet — set the source on **Devices**"]),
+            "",
+            f"**② Change sources** — after a {wait:g} s wake-up wait (none when everything was already on)",
+            *(src or ["• nothing — every device stays on its current input"]),
+            "",
+            "**③ Set the scene** — alongside step ①",
+            *(scene or ["• nothing — the lights are left as they are"]),
+            "",
+            "**When it's switched off** (Room Off, or another activity)",
+            *(end or ["• its devices switch off as the room's Room Off says"]),
+            "",
+            f"**Coming from another {kind} activity:** {switch}. Pressing it while it's already playing never re-runs anything.",
+        ])
+
+    # ------------------------------------------------------------ home icons
+
+    async def async_step_home_icons(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """The remote's room home: round bubbles or icons only, and your own icon images."""
+        dev = self.project.setdefault("device", {})
+        icons = dev.get("icons") if isinstance(dev.get("icons"), dict) else {}
+        if user_input is not None:
+            dev["home_style"] = user_input.get("home_style") if user_input.get("home_style") in HOME_STYLES else "round"
+            new: dict[str, str] = {}
+            for cat in HOME_ICONS:
+                if user_input.get(f"{cat}_upload"):
+                    url = await self.hass.async_add_executor_job(
+                        _save_upload, self.hass, user_input[f"{cat}_upload"], f"icon_{cat}"
+                    )
+                else:
+                    url = (user_input.get(cat) or "").strip()
+                if url:
+                    new[cat] = url
+            dev["icons"] = new
+            dev["icons_rev"] = int(time.time()) if new else None  # re-download on every Submit
+            return await self.async_step_init()
+        fields: dict = {
+            vol.Required("home_style", default=dev.get("home_style") if dev.get("home_style") in HOME_STYLES else "round"): _select(
+                HOME_STYLES, dropdown=False, key="home_style"
+            ),
+        }
+        for cat in HOME_ICONS:
+            fields[vol.Optional(f"{cat}_upload")] = _upload()
+            fields[_opt(cat, icons)] = TextSelector()
+        return self.async_show_form(step_id="home_icons", data_schema=vol.Schema(fields))
 
     def _source_list(self, entity_id: str | None) -> list[str]:
         """Inputs the device reports, the one it is on now, and any typed in before."""
@@ -875,7 +1094,7 @@ class ArRemoteComposer(OptionsFlow):
                 if isinstance(value, list):  # some HA versions hand back a list
                     value = value[0] if value else None
                 devices[eid]["off"] = value.strip() if isinstance(value, str) and "." in value and value.strip() != eid else None
-            return await self.async_step_actions()
+            return await self._after("start_steps")
 
         fields: dict = {}
         for key, entity in (("source_input", act.get("source")), ("input", act.get("volume"))):
@@ -913,7 +1132,7 @@ class ArRemoteComposer(OptionsFlow):
         for key, eid in self._off_keys.items():
             fields[_opt(key, {key: devices[eid].get("off")})] = _any()
         if not fields:
-            return await self.async_step_actions()
+            return await self._after("start_steps")
         return self.async_show_form(
             step_id="sources",
             data_schema=vol.Schema(fields),
@@ -1024,7 +1243,7 @@ class ArRemoteComposer(OptionsFlow):
             act["start_steps"] = self._parse_steps(user_input)
             # The old lists now live in the steps above.
             act["off_on_start"], act["pulse"] = [], []
-            return await self.async_step_end_steps()
+            return await self._after("end_steps")
         steps = act.get("start_steps")
         if not isinstance(steps, list) or (not steps and (act.get("off_on_start") or act.get("pulse"))):
             steps = self._legacy_start_steps(act)
@@ -1045,7 +1264,7 @@ class ArRemoteComposer(OptionsFlow):
             act["start_actions"] = list(adv.get("start_actions") or [])
             act["stop_actions"] = list(adv.get("stop_actions") or [])
             act["turn_off_on_end"] = bool(adv.get("turn_off_on_end", True))
-            return await self.async_step_buttons()
+            return await self._after("buttons")
         steps = act.get("end_steps") if isinstance(act.get("end_steps"), list) else []
         fields = self._steps_fields(steps)
         adv = {
@@ -1078,7 +1297,7 @@ class ArRemoteComposer(OptionsFlow):
                 label = (user_input.get(f"{slot}_label") or "").strip()
                 action = user_input.get(f"{slot}_action") or None
                 slots[slot] = {"label": label, "action": action} if (label or action) else {}
-            return await self.async_step_init()
+            return await self._after("init")
 
         fields: dict = {}
         for slot in SLOTS_CUSTOM + SLOTS_COLOR:

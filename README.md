@@ -36,12 +36,13 @@ instead when the app isn't running.)
 
 | Step | What you set |
 | --- | --- |
-| **Add a room** | lights and switches (relays), lighting scenes, climate, shades, favourites, temperature sensor · **Room Off**: lights off (on by default), climate off, *also turn off* list, *keep running* list with its own minutes per device, optional Room Off action |
+| **Add a room** | lights and switches (relays), lighting scenes, climate, shades, favourites, temperature sensor · **Room Off** in four boxes: *Turns off* · *Your choice* (asked on the remote's Room Off sheet) · *Stays on for a bit* (own minutes per device) · *Never touched* |
 | **Add an activity** | Watch or Listen · logo · source media player (+ input or app) · volume device (+ input) · navigation remote + command set · **Also turn on**: any number of extra devices (projector, amp, screen, power switches) · optional start action |
 | **Inputs** | dropdowns of the inputs the source, the amp and each extra media player actually report — leave one empty and that device just switches on |
 | **What else it does** | **Turn off when it starts** (each device: now or after N s) · **Turn on for a few seconds, then off** (each device its own time) · HA action editor for start and end: other devices + sources, lights (dim/colour), switches, delays between steps |
 | **Buttons** | 3 on-screen custom buttons and the red/green/blue/yellow keys — label + script/scene/button |
 | **Copy an activity** | duplicates an activity (devices, inputs, steps, buttons) — set up Netflix once, copy it to Prime and change the name, logo and app |
+| **Home screen icons** | round bubbles or icons only; your own image for any home icon |
 | **Remote settings** | your logo (start-up splash and charging screen), charging screen on/off, wake on pick-up (off / auto / always) and its sensitivity |
 | **Save and program** | pushes the project to the remote |
 
@@ -72,6 +73,25 @@ The navigation remote gets `remote.send_command` with the names the platform
 expects: `apple_tv`, `android_tv`, `roku`, `samsung_tv`, `lg_webos`,
 `ir_generic` (Broadlink / IR learned codes named `up`, `down`, `ok`, `back` …).
 Transport keys fall back to the source media player when the set has no command.
+
+## Changes in 2.9.0
+
+- **No more re-triggering.** Pressing an activity that's already playing (Watch → Lights → back → Netflix) just
+  opens its screen; nothing runs again. Switching between two Watch (or two Listen) activities only changes
+  sources: missing devices power on, inputs switch, devices only the old one used go off. The lights, scene,
+  start and off steps are left alone. Per activity, *Coming from another activity of the same type* can be set to
+  *Run everything again*. Watch → Listen still runs the full start. If the TV was switched off with another
+  remote, pressing the activity again starts it properly.
+- **Activity overview.** *Open an activity* shows it on one page: ① what turns on, ② which sources / volume /
+  sound mode, ③ the scene, what happens when it's switched off — and edits each part from there.
+- **Room Off in four boxes** on the room page, with a summary at the top: 🔴 *Turns off* · 🟠 *Your choice*
+  (lights / aircon / any device: always off, ask with off by default, ask with left on by default, never) ·
+  🔵 *Stays on for a bit* · 🟢 *Never touched* (even when an activity switched it on).
+- **Room Off sheet on the remote.** Tapping Room Off on the screen shows what turns off, a toggle for each
+  *Your choice* item and what stays on (switch off with *Ask first on the remote*). The power key never asks.
+- **C4-style home.** The room's icons in lit round bubbles, or **icons only** (*Home screen icons*). Every home
+  icon (Watch, Listen, Lights, Comfort, Shades, Favourites, Room Off) can be replaced with your own image. The
+  Watch / Listen picker shows the logos round too, with *Playing* under the one that runs.
 
 ## Changes in 2.7.0
 

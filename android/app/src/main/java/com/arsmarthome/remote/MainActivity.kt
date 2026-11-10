@@ -233,10 +233,14 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
     override fun logoOf(activity: Activity): android.graphics.Bitmap? =
         Icons.get(this, store, activity.logo) { refresh() }
 
-    override fun roomOff() {
+    override fun image(path: String?): android.graphics.Bitmap? =
+        Icons.get(this, store, path) { refresh() }
+
+    override fun roomOff(choices: Map<String, Boolean>?) {
         val r = room ?: return
         live.roomActivity[r.id] = null
-        send("room_off")
+        val picked = choices?.let { c -> JSONObject().apply { c.forEach { (k, v) -> put(k, v) } } }
+        send("room_off", "choices" to picked)
         // Back to the room list, not the room's Listen / Watch page.
         mainPage()
     }
@@ -751,7 +755,9 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         store.saveProject(json)
         project = parsed
         if (project?.room(roomId) == null) roomId = project?.defaultRoom
-        project?.let { p -> Icons.prune(this, p.rooms.flatMap { r -> r.activities.mapNotNull { it.logo } }) }
+        project?.let { p ->
+            Icons.prune(this, p.rooms.flatMap { r -> r.activities.mapNotNull { it.logo } } + p.device.icons.values)
+        }
         applyDeviceSettings()
         if (screen == null || screen is SetupScreen) mainPage() else refresh()
     }

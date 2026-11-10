@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 
-from .const import IR_KEYS, KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
+from .const import HOME_ICONS, HOME_STYLES, IR_KEYS, KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
 
 
 def _name(hass: HomeAssistant, entity_id: str) -> str:
@@ -39,6 +39,127 @@ def _ids(value: Any) -> list[str]:
 
 def _items(hass: HomeAssistant, ids: Any) -> list[dict]:
     return [{"entity": e, "name": _name(hass, e)} for e in _ids(ids)]
+
+
+# ----------------------------------------------------------------- Room Off plan
+#
+# Every device in a room is in one of four groups at Room Off:
+#   turns off       — always switched off (activity devices, "also turns off")
+#   your choice     — off or left on by default; the client can flip it on the
+#                     remote's Room Off sheet (the lights, the aircon, a list)
+#   stays on        — keeps running for its own minutes, then switches off
+#   never touched   — Room Off leaves it alone, even if an activity used it
+
+OFF_MODES = ["always", "ask_off", "ask_on", "never"]
+
+
+def off_mode(room: dict, what: str) -> str:
+    """How Room Off treats the room's lights / climate (older rooms stored a bool)."""
+    mode = room.get(f"off_{what}_mode")
+    if mode in OFF_MODES:
+        return mode
+    if what == "lights":
+        return "always" if room.get("off_lights", True) else "never"
+    return "always" if room.get("off_climate") else "never"
+
+
+def activity_core(act: dict) -> set[str]:
+    """Source, amp and every 'Also turn on' device of an activity."""
+    ents = {e for e in (act.get("source"), act.get("volume")) if isinstance(e, str) and e}
+    for dev in act.get("devices") or []:
+        if isinstance(dev, dict) and isinstance(dev.get("entity"), str) and dev["entity"]:
+            ents.add(dev["entity"])
+    for item in act.get("pulse") or []:
+        if isinstance(item, dict) and isinstance(item.get("entity"), str) and "." in item["entity"]:
+            ents.add(item["entity"])
+    return ents
+
+
+def delayed_minutes(room: dict) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for item in room.get("off_delayed") or []:
+        if not isinstance(item, dict) or not isinstance(item.get("entity"), str):
+            continue
+        try:
+            minutes = float(item.get("minutes"))
+        except (TypeError, ValueError):
+            continue
+        if minutes > 0:
+            out[item["entity"]] = minutes
+    return out
+
+
+def room_off_plan(room: dict) -> dict:
+    """The four Room Off groups of a room.
+
+    {"plain": set, "listed": set, "choices": [{"id", "entities", "default_off", "listed"}],
+     "delayed": {entity: minutes}, "never": set}
+    plain = switched off the normal way; listed = the installer's own off list
+    (buttons / scripts on it are pressed).
+    """
+    never = set(_ids(room.get("off_never")))
+    plain: set[str] = set()
+    for act in room.get("activities") or []:
+        plain |= activity_core(act)
+    choices: list[dict] = []
+    lights = _ids(room.get("lights"))
+    mode = off_mode(room, "lights")
+    if lights and mode == "always":
+        plain |= set(lights)
+    elif lights and mode in ("ask_off", "ask_on"):
+        choices.append({"id": "lights", "entities": lights, "default_off": mode == "ask_off", "listed": False})
+    climate = room.get("climate")
+    mode = off_mode(room, "climate")
+    if climate and mode == "always":
+        plain.add(climate)
+    elif climate and mode in ("ask_off", "ask_on"):
+        choices.append({"id": "climate", "entities": [climate], "default_off": mode == "ask_off", "listed": False})
+    taken = {e for c in choices for e in c["entities"]}
+    for key, default_off in (("off_choice_off", True), ("off_choice_on", False)):
+        for eid in _ids(room.get(key)):
+            if eid not in taken:
+                taken.add(eid)
+                choices.append({"id": eid, "entities": [eid], "default_off": default_off, "listed": True})
+    delayed = {e: m for e, m in delayed_minutes(room).items() if e not in never}
+    listed = set(_ids(room.get("off_extra"))) - never
+    plain -= never
+    for c in choices:
+        c["entities"] = [e for e in c["entities"] if e not in never]
+    choices = [c for c in choices if c["entities"]]
+    # A device the client decides about is not also on the "always off" lists.
+    plain -= taken
+    listed -= taken
+    return {"plain": plain, "listed": listed, "choices": choices, "delayed": delayed, "never": never}
+
+
+def _off_for_remote(hass: HomeAssistant, room: dict) -> dict:
+    """What the remote's Room Off sheet shows."""
+    plan = room_off_plan(room)
+    lights = set(_ids(room.get("lights")))
+    always = (plan["plain"] | plan["listed"]) - set(plan["delayed"])
+    names: list[str] = []
+    if lights and lights <= always:
+        names.append("Lights")
+        always -= lights
+    names += sorted({_name(hass, e) for e in always})
+    choices = []
+    for c in plan["choices"]:
+        if c["id"] == "lights":
+            name = "Lights"
+            light_names = room.get("light_names") if isinstance(room.get("light_names"), dict) else {}
+            hint = ", ".join((light_names.get(e) or _name(hass, e)) for e in c["entities"][:3])
+            if len(c["entities"]) > 3:
+                hint += f" +{len(c['entities']) - 3}"
+        elif c["id"] == "climate":
+            name, hint = "Aircon", _name(hass, c["entities"][0])
+        else:
+            name, hint = _name(hass, c["id"]), ""
+        choices.append({"id": c["id"], "name": name, "hint": hint, "default_off": c["default_off"]})
+    stays = [
+        {"name": _name(hass, e), "minutes": m}
+        for e, m in sorted(plan["delayed"].items(), key=lambda kv: _name(hass, kv[0]))
+    ]
+    return {"ask": bool(room.get("off_ask", True)), "turns_off": names, "choices": choices, "stays_on": stays}
 
 
 def compile_project(hass: HomeAssistant, config: dict) -> dict:
@@ -82,6 +203,7 @@ def compile_project(hass: HomeAssistant, config: dict) -> dict:
                 "climate": {"entity": climate, "name": _name(hass, climate)} if climate else None,
                 "covers": _items(hass, room.get("covers")),
                 "favourites": _items(hass, room.get("favourites")),
+                "off": _off_for_remote(hass, room),
             }
         )
     project: dict[str, Any] = {
@@ -147,6 +269,12 @@ def compile_device(hass: HomeAssistant, dev: dict) -> dict:
         "keys": _key_modes(dev.get("keys")),
         "clock_x": _pct(dev.get("clock_x")),
         "clock_y": _pct(dev.get("clock_y")),
+        "home_style": dev.get("home_style") if dev.get("home_style") in HOME_STYLES else "round",
+        "icons": {
+            cat: _versioned(url, dev.get("icons_rev"))
+            for cat, url in (dev.get("icons") or {}).items()
+            if cat in HOME_ICONS and isinstance(url, str) and url.strip()
+        } if isinstance(dev.get("icons"), dict) else {},
     }
 
 

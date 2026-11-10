@@ -216,7 +216,7 @@ class ActivityScreen(host: Host, val activityId: String) : Screen(host) {
         addView(ctx.icon(R.drawable.ic_power, Palette.danger, 20))
         addView(ctx.label("Room Off", 17f, Palette.danger, bold = true))
         contentDescription = "Room Off"
-        clickable(focusable = false) { host.roomOff() }
+        clickable(focusable = false) { host.askRoomOff() }
     }
 
     private fun bigRound(res: Int, desc: String, onClick: () -> Unit): View =

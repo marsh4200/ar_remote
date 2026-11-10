@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "ar_remote"
 NAME = "AR Remote"
-VERSION = "2.7.0"
+VERSION = "2.9.0"
 
 CONF_HOST = "host"
 CONF_PORT = "port"
@@ -28,6 +28,13 @@ APP_ACTIVITY = f"{APP_PACKAGE}/.MainActivity"
 APK_URL = "https://github.com/marsh4200/ar_remote/releases/latest/download/ar-remote.apk"
 
 KINDS = ["watch", "listen"]
+
+# The room home on the remote: round icon bubbles, or the icon on its own.
+HOME_STYLES = ["round", "icons"]
+# Home icons the installer can replace with an uploaded image.
+HOME_ICONS = ["watch", "listen", "lights", "comfort", "shades", "favourites", "room_off"]
+# Going from one activity to another of the same kind (Netflix → Apple TV).
+SWITCH_MODES = ["sources", "full"]
 SLOTS_CUSTOM = ["custom1", "custom2", "custom3"]
 SLOTS_COLOR = ["red", "green", "blue", "yellow"]
 

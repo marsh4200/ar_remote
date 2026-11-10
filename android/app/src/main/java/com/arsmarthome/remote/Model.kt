@@ -21,6 +21,33 @@ data class Activity(
     val ir: Map<String, String> = emptyMap(),
 )
 
+/** One "your choice" item on the Room Off sheet (the lights, the aircon, a device). */
+data class OffChoice(val id: String, val name: String, val hint: String, val defaultOff: Boolean)
+
+/** What Room Off does in a room, for the remote's Room Off sheet. */
+data class RoomOff(
+    val ask: Boolean = false,
+    val turnsOff: List<String> = emptyList(),
+    val choices: List<OffChoice> = emptyList(),
+    /** name → minutes it keeps running. */
+    val staysOn: List<Pair<String, Double>> = emptyList(),
+) {
+    companion object {
+        fun parse(o: JSONObject?): RoomOff {
+            if (o == null) return RoomOff()
+            return RoomOff(
+                ask = o.optBoolean("ask", false),
+                turnsOff = o.optJSONArray("turns_off").strings().filter { it.isNotBlank() },
+                choices = o.optJSONArray("choices").objects().mapNotNull { c ->
+                    val id = c.optStr("id") ?: return@mapNotNull null
+                    OffChoice(id, c.optString("name", id), c.optString("hint", ""), c.optBoolean("default_off", true))
+                },
+                staysOn = o.optJSONArray("stays_on").objects().map { it.optString("name") to it.optDouble("minutes", 0.0) },
+            )
+        }
+    }
+}
+
 data class Room(
     val id: String,
     val name: String,
@@ -31,6 +58,7 @@ data class Room(
     val climate: Item?,
     val covers: List<Item>,
     val favourites: List<Item>,
+    val off: RoomOff = RoomOff(),
 ) {
     fun activity(id: String?): Activity? = activities.firstOrNull { it.id == id }
     fun activitiesOf(kind: String): List<Activity> = activities.filter { it.kind == kind }
@@ -52,6 +80,10 @@ data class DeviceSettings(
     val keys: Map<String, String> = emptyMap(),
     /** Seconds the clock keeps the screen on before it may go dark; 0 = always. */
     val clockFor: Int = 0,
+    /** Room home: "round" icon bubbles or "icons" only. */
+    val homeStyle: String = "round",
+    /** Home icon (watch, listen, lights, comfort, shades, favourites, room_off) → image address. */
+    val icons: Map<String, String> = emptyMap(),
 ) {
     companion object {
         fun parse(d: JSONObject?): DeviceSettings {
@@ -70,6 +102,10 @@ data class DeviceSettings(
                 clockFor = d.optInt("clock_for", 0).coerceIn(0, 86_400),
                 keys = d.optJSONObject("keys")?.let { o ->
                     o.keys().asSequence().associateWith { o.optString(it, "") }
+                } ?: emptyMap(),
+                homeStyle = if (d.optString("home_style", "round") == "icons") "icons" else "round",
+                icons = d.optJSONObject("icons")?.let { o ->
+                    o.keys().asSequence().associateWith { o.optString(it, "") }.filterValues { it.isNotBlank() }
                 } ?: emptyMap(),
             )
         }
@@ -121,6 +157,7 @@ data class Project(
             climate = r.optJSONObject("climate")?.let { Item(it.getString("entity"), it.optString("name")) },
             covers = items(r.optJSONArray("covers")),
             favourites = items(r.optJSONArray("favourites")),
+            off = RoomOff.parse(r.optJSONObject("off")),
         )
 
         private fun items(arr: JSONArray?): List<Item> =

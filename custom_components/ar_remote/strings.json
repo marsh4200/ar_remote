@@ -22,18 +22,20 @@
         "description": "{summary}\n\n**How it fits together:** a **room** holds its lights, scenes, aircon, shades and what Room Off does. An **activity** (Watch Apple TV, Listen to music …) is what the room is doing: which devices switch on, which inputs they go to, and what the remote's buttons control while it runs.\n\nChanges are kept here until you choose **Save and program the remote**.",
         "menu_options": {
           "add_room": "Add a room",
-          "pick_room": "Edit a room",
+          "pick_room": "Edit a room and its Room Off",
           "add_activity": "Add an activity (Watch / Listen)",
-          "pick_activity": "Edit an activity and its buttons",
+          "pick_activity": "Open an activity (what it turns on, sources, scene, buttons)",
           "copy_activity": "Copy an activity (e.g. Netflix → Prime)",
           "pick_delete": "Delete a room or activity",
           "ir_devices": "IR devices (codes the remote sends itself)",
+          "home_icons": "Home screen icons (round or icons only, your own images)",
           "remote_settings": "Remote settings (logo, charging, wake on pick-up)",
           "save": "Save and program the remote"
         }
       },
       "add_room": {
         "title": "Room — step 1 of 2",
+        "description": "**Room step 1 of 2.** Top: what the remote shows for this room. Below: what **Room Off** does, in four boxes.\n\n**Room Off right now:**\n{plan}\n\nEverything an activity in this room switches on (TV, amp, projector …) is always in **Turns off**, unless you put it under **Never touched**.",
         "data": {
           "name": "Room name",
           "lights": "Lights and switches (relays)",
@@ -41,23 +43,67 @@
           "climate": "Climate",
           "covers": "Shades / blinds",
           "favourites": "Favourites",
-          "temperature": "Temperature sensor (shown in the header)",
-          "off_action": "Room Off action (optional)",
-          "off_lights": "Room Off turns off the lights and switches above",
-          "off_climate": "Room Off turns off the climate",
-          "off_extra": "Room Off also turns off",
-          "off_delayed": "Keep running after Room Off, then switch off",
-          "off_delay_minutes": "Keep running for (minutes)"
+          "temperature": "Temperature sensor (shown in the header)"
         },
         "data_description": {
-          "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
-          "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off.",
-          "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
-          "off_extra": "Anything else that must be off when the room is off — fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
-          "off_delayed": "These stay on after Room Off and switch off by themselves. A **button** here is pressed when its time is up (e.g. projector off after the lamp cools). Starting an activity that uses one cancels its timer.",
-          "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
+          "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off."
         },
-        "description": "**Room step 1 of 2.** Top half: what the remote shows for this room. Bottom half (**Room Off**): what the power key / Room Off does.\n\nRoom Off always switches off everything the room's activities switched on (amp, TV, projector …). Below you choose what else goes off, and what keeps running for a few minutes first."
+        "sections": {
+          "room_off": {
+            "name": "Room Off on the remote",
+            "data": {
+              "off_ask": "Ask first on the remote (Room Off sheet)"
+            },
+            "data_description": {
+              "off_ask": "On: tapping Room Off on the screen shows what will turn off, with on/off toggles for the **Your choice** items. The remote's power key never asks — it turns off straight away with the defaults below."
+            }
+          },
+          "turns_off": {
+            "name": "🔴 Turns off — always",
+            "data": {
+              "off_extra": "Also turns off",
+              "off_action": "Then run (optional)"
+            },
+            "data_description": {
+              "off_extra": "Besides everything the activities switched on: fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
+              "off_action": "A script, scene or automation that runs last, after everything is off."
+            }
+          },
+          "your_choice": {
+            "name": "🟠 Your choice — the client decides on the remote",
+            "data": {
+              "off_lights_mode": "The room's lights",
+              "off_climate_mode": "The climate / aircon",
+              "off_choice_off": "Other devices — off by default",
+              "off_choice_on": "Other devices — left on by default"
+            },
+            "data_description": {
+              "off_lights_mode": "**Always off** / **Never** don't ask. The two **Ask** options show a toggle on the Room Off sheet, set the way you choose here.",
+              "off_choice_off": "Shown on the Room Off sheet, switched ON so they turn off unless the client flips it.",
+              "off_choice_on": "Shown on the Room Off sheet, switched OFF so they stay on unless the client flips it."
+            }
+          },
+          "stays_on": {
+            "name": "🔵 Stays on for a bit, then switches off",
+            "data": {
+              "off_delayed": "Devices",
+              "off_delay_minutes": "Keep running for (minutes)"
+            },
+            "data_description": {
+              "off_delayed": "They stay on after Room Off and switch off by themselves (an amp running down, a passage light to walk out by). A **button** here is pressed when its time is up. Starting an activity that uses one cancels its timer. Timers survive a restart.",
+              "off_delay_minutes": "For all of them; after Submit, the next page lets you give each device its own time."
+            }
+          },
+          "never_touched": {
+            "name": "🟢 Never touched",
+            "data": {
+              "off_never": "Room Off leaves these alone"
+            },
+            "data_description": {
+              "off_never": "Even when an activity switched it on — e.g. a pool pump, a gate light, the amp in another zone."
+            }
+          }
+        }
       },
       "pick_room": {
         "title": "Edit a room",
@@ -67,6 +113,7 @@
       },
       "edit_room": {
         "title": "{room} — step 1 of 2",
+        "description": "**Room step 1 of 2.** Top: what the remote shows for this room. Below: what **Room Off** does, in four boxes.\n\n**Room Off right now:**\n{plan}\n\nEverything an activity in this room switches on (TV, amp, projector …) is always in **Turns off**, unless you put it under **Never touched**.",
         "data": {
           "name": "Room name",
           "lights": "Lights and switches (relays)",
@@ -74,22 +121,67 @@
           "climate": "Climate",
           "covers": "Shades / blinds",
           "favourites": "Favourites",
-          "temperature": "Temperature sensor (shown in the header)",
-          "off_action": "Room Off action (optional)",
-          "off_lights": "Room Off turns off the lights and switches above",
-          "off_climate": "Room Off turns off the climate",
-          "off_extra": "Room Off also turns off",
-          "off_delayed": "Keep running after Room Off, then switch off",
-          "off_delay_minutes": "Keep running for (minutes)"
+          "temperature": "Temperature sensor (shown in the header)"
         },
         "data_description": {
-          "off_action": "Optional extra action at Room Off. Room Off always pauses the music and turns off every source, amp and anything an activity turned on.",
-          "off_lights": "On: the room goes completely dark at Room Off. Off: Room Off leaves the lights alone.",
-          "off_extra": "Anything else that must be off when the room is off — fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
-          "off_delayed": "These stay on after Room Off and switch off by themselves. A **button** here is pressed when its time is up (e.g. projector off after the lamp cools). Starting an activity that uses one cancels its timer.",
-          "off_delay_minutes": "How long the devices above keep running after Room Off. After Submit, the next page lets you give each device its own time."
+          "lights": "Dimmable lights get a slider on the remote; switches and relays are on / off."
         },
-        "description": "**Room step 1 of 2.** Top half: what the remote shows for this room. Bottom half (**Room Off**): what the power key / Room Off does.\n\nRoom Off always switches off everything the room's activities switched on (amp, TV, projector …). Below you choose what else goes off, and what keeps running for a few minutes first."
+        "sections": {
+          "room_off": {
+            "name": "Room Off on the remote",
+            "data": {
+              "off_ask": "Ask first on the remote (Room Off sheet)"
+            },
+            "data_description": {
+              "off_ask": "On: tapping Room Off on the screen shows what will turn off, with on/off toggles for the **Your choice** items. The remote's power key never asks — it turns off straight away with the defaults below."
+            }
+          },
+          "turns_off": {
+            "name": "🔴 Turns off — always",
+            "data": {
+              "off_extra": "Also turns off",
+              "off_action": "Then run (optional)"
+            },
+            "data_description": {
+              "off_extra": "Besides everything the activities switched on: fans, a heater, a TV that isn't in an activity. A **button**, script or scene here is pressed / run (e.g. a projector-off button).",
+              "off_action": "A script, scene or automation that runs last, after everything is off."
+            }
+          },
+          "your_choice": {
+            "name": "🟠 Your choice — the client decides on the remote",
+            "data": {
+              "off_lights_mode": "The room's lights",
+              "off_climate_mode": "The climate / aircon",
+              "off_choice_off": "Other devices — off by default",
+              "off_choice_on": "Other devices — left on by default"
+            },
+            "data_description": {
+              "off_lights_mode": "**Always off** / **Never** don't ask. The two **Ask** options show a toggle on the Room Off sheet, set the way you choose here.",
+              "off_choice_off": "Shown on the Room Off sheet, switched ON so they turn off unless the client flips it.",
+              "off_choice_on": "Shown on the Room Off sheet, switched OFF so they stay on unless the client flips it."
+            }
+          },
+          "stays_on": {
+            "name": "🔵 Stays on for a bit, then switches off",
+            "data": {
+              "off_delayed": "Devices",
+              "off_delay_minutes": "Keep running for (minutes)"
+            },
+            "data_description": {
+              "off_delayed": "They stay on after Room Off and switch off by themselves (an amp running down, a passage light to walk out by). A **button** here is pressed when its time is up. Starting an activity that uses one cancels its timer. Timers survive a restart.",
+              "off_delay_minutes": "For all of them; after Submit, the next page lets you give each device its own time."
+            }
+          },
+          "never_touched": {
+            "name": "🟢 Never touched",
+            "data": {
+              "off_never": "Room Off leaves these alone"
+            },
+            "data_description": {
+              "off_never": "Even when an activity switched it on — e.g. a pool pump, a gate light, the amp in another zone."
+            }
+          }
+        }
       },
       "add_activity": {
         "title": "Activity — step 1 of 5: devices",
@@ -107,7 +199,8 @@
           "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
           "power_on": "Extra action when the activity starts (optional)",
           "now_playing": "Show what's playing from (optional)",
-          "ir_device": "IR device (sent by the remote's own IR)"
+          "ir_device": "IR device (sent by the remote's own IR)",
+          "switch_mode": "Coming from another activity of the same type"
         },
         "data_description": {
           "volume": "Volume, mute and the volume rocker go here. Leave empty to use the source.",
@@ -118,7 +211,8 @@
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
           "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source.",
-          "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above."
+          "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above.",
+          "switch_mode": "E.g. Netflix → Apple TV while watching. **Sources only**: missing devices power on and inputs change; the lights and scene stay as they are. Pressing an activity that's already playing never re-runs anything."
         }
       },
       "edit_activity": {
@@ -135,14 +229,16 @@
           "devices": "Also turn on (projector, amp, screen … or a button that turns one on)",
           "power_on": "Extra action when the activity starts (optional)",
           "now_playing": "Show what's playing from (optional)",
-          "ir_device": "IR device (sent by the remote's own IR)"
+          "ir_device": "IR device (sent by the remote's own IR)",
+          "switch_mode": "Coming from another activity of the same type"
         },
         "data_description": {
           "devices": "Switched on when the activity starts. A button / script is pressed. At Room Off (or when the next activity doesn't use them) they're switched off — a device switched on by a button needs its **turn off with** command on the next page, otherwise Home Assistant can't switch it off.",
           "logo": "Already have the image in Home Assistant? e.g. `/local/netflix.png`. Leave both empty for the Watch / Listen icon.",
           "logo_upload": "Pick an image from your computer or phone (PNG or JPG; square looks best). Shown on the remote's Watch / Listen picker.",
           "now_playing": "The title and picture on the remote's Watch screen come from the source. Android TV Remote only reports the app, not the title — pick the TV's **Google Cast** entity here (or Plex, Kodi, Spotify) and the remote shows its title and picture instead. Leave empty to use the source.",
-          "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above."
+          "ir_device": "Its up / down / OK / back / volume / play codes go out of the remote's IR blaster. Keys without a code still use the navigation remote above.",
+          "switch_mode": "E.g. Netflix → Apple TV while watching. **Sources only**: missing devices power on and inputs change; the lights and scene stay as they are. Pressing an activity that's already playing never re-runs anything."
         },
         "description": "**Activity step 1 of 5: the devices.**\n\n• **Source**: what you watch or listen to (Apple TV, DStv, Spotify). The D-pad, OK and play keys control it.\n• **Volume device**: what the volume keys control (the amp / soundbar / TV).\n• **Also turn on**: everything else that must come on — projector, screen, subwoofer. Network devices, plugs / relays, or an IR / RF **button** that switches one on.\n\nNext page: which input each one goes to, and how button-controlled devices are switched off."
       },
@@ -465,6 +561,42 @@
       "light_names": {
         "title": "{room} — light names on the remote",
         "description": "Each box is a light in this room, labelled with its Home Assistant name. Type the name you want on the remote (e.g. **Downlights**, **Cove**, **Pool light**). Leave a box empty to use the Home Assistant name."
+      },
+      "activity_menu": {
+        "title": "{activity}",
+        "description": "**{room} · {kind}**\n\n{summary}",
+        "menu_options": {
+          "edit_activity": "① Devices — what turns on, logo, remote",
+          "sources": "② Sources — inputs, volume, sound mode, off commands",
+          "start_steps": "③ Scene — when it starts",
+          "end_steps": "When it's switched off",
+          "buttons": "Buttons and colour keys",
+          "init": "← Back to the Composer"
+        }
+      },
+      "home_icons": {
+        "title": "Home screen icons",
+        "description": "The room's home page on the remote: **Round** puts each icon in a lit bubble; **Icons only** shows just the icon and its name. Upload your own image for any icon (a PNG with a transparent background works best), or type an address such as `/local/icons/tv.png`. Clear both boxes to go back to the built-in icon. The playing activity and lights that are on are shown in the accent colour.",
+        "data": {
+          "home_style": "Look of the room's icons",
+          "watch": "…or an image address",
+          "listen": "…or an image address",
+          "lights": "…or an image address",
+          "comfort": "…or an image address",
+          "shades": "…or an image address",
+          "favourites": "…or an image address",
+          "room_off": "…or an image address",
+          "watch_upload": "Watch icon — upload",
+          "listen_upload": "Listen icon — upload",
+          "lights_upload": "Lights icon — upload",
+          "comfort_upload": "Comfort icon — upload",
+          "shades_upload": "Shades icon — upload",
+          "favourites_upload": "Favourites icon — upload",
+          "room_off_upload": "Room Off icon — upload"
+        },
+        "data_description": {
+          "home_style": "Built-in icons take the accent colour when active. Your own images are shown as they are."
+        }
       }
     },
     "error": {
@@ -527,6 +659,26 @@
         "dim": "Dim to … % / set level",
         "toggle": "Toggle",
         "press": "Press / run (button, script, automation, scene)"
+      }
+    },
+    "off_mode": {
+      "options": {
+        "always": "Always off",
+        "ask_off": "Ask — off by default",
+        "ask_on": "Ask — left on by default",
+        "never": "Never (Room Off leaves them)"
+      }
+    },
+    "switch_mode": {
+      "options": {
+        "sources": "Sources only (recommended)",
+        "full": "Run everything again"
+      }
+    },
+    "home_style": {
+      "options": {
+        "round": "Round bubbles",
+        "icons": "Icons only"
       }
     }
   },
@@ -616,7 +768,7 @@
     },
     "room_off": {
       "name": "Room off",
-      "description": "Turn the room off: every source, amp and activity device, the lights (unless switched off for the room) and anything on the room's off list. Devices set to keep running switch off after their own timer.",
+      "description": "Turn the room off: everything an activity switched on, plus the room's Turns off list and its Your choice items at their defaults. Devices set to stay on switch off after their own timer; Never touched devices are left alone.",
       "fields": {
         "config_entry_id": {
           "name": "Remote",

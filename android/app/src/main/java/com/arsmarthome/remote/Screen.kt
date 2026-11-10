@@ -21,11 +21,19 @@ interface Host {
     fun mainPage()
     fun send(type: String, vararg fields: Pair<String, Any?>)
     fun startRoomActivity(activity: Activity)
-    fun roomOff()
+    /** Everything off. [choices]: the Room Off sheet's "your choice" items (id → turn it off). */
+    fun roomOff(choices: Map<String, Boolean>? = null)
+    /** The on-screen Room Off: the sheet when the room asks first, else straight off. */
+    fun askRoomOff() {
+        val r = room
+        if (r != null && r.off.ask) show(RoomOffScreen(this)) else roomOff()
+    }
     fun refresh()
     fun refreshNow() = refresh()
     /** An activity's logo (null until loaded, or when it has none). */
     fun logoOf(activity: Activity): android.graphics.Bitmap? = null
+    /** An image from Home Assistant (a custom home icon); null until loaded. */
+    fun image(path: String?): android.graphics.Bitmap? = null
 }
 
 abstract class Screen(protected val host: Host) {

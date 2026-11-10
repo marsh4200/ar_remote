@@ -40,7 +40,7 @@ from .const import (
     SIGNAL_UPDATE,
     TRANSPORT_SERVICES,
 )
-from .project import compact_state, compile_project, tracked_entities
+from .project import compact_state, compile_project, room_off_plan, tracked_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -374,7 +374,7 @@ class ArRemoteRuntime:
         elif kind == "activity":
             await self.start_activity(msg.get("room"), msg.get("activity"))
         elif kind == "room_off":
-            await self.room_off(msg.get("room"))
+            await self.room_off(msg.get("room"), msg.get("choices"))
         elif kind == "slot":
             room_id = msg.get("room")
             act = self.activity(room_id, msg.get("activity"))
@@ -782,8 +782,38 @@ class ArRemoteRuntime:
         async with self._lock(room["id"]):
             await self._start_activity(room["id"], new)
 
+    def _still_running(self, act: dict) -> bool:
+        """True when the activity's own players are actually on.
+
+        HA's record says the activity runs; this guards against someone having
+        switched the TV off with another remote, so pressing it again on the
+        AR Remote starts it properly instead of doing nothing.
+        """
+        players = [
+            e for e in self._core_entities(act)
+            if e.startswith("media_player.") and self.hass.states.get(e) is not None
+        ]
+        return not players or any(self._is_on(e) for e in players)
+
+    def _switch_only(self, old: dict, new: dict) -> bool:
+        """Going from one activity to another of the same kind (Netflix → Apple TV):
+        the room is already in its scene, so only the sources change — unless the
+        new activity is set to run its start steps again on a switch."""
+        if new.get("switch_mode") == "full":
+            return False
+        return (old.get("kind") or "watch") == (new.get("kind") or "watch") and self._still_running(old)
+
     async def _start_activity(self, room_id: str, new: dict) -> None:
         old = self.activity(room_id, self.current.get(room_id))
+        if old is not None and old["id"] == new["id"] and self._still_running(old):
+            # Already playing: pressing it again (back from Lights → Watch → Netflix)
+            # must not re-run the scene. Just make sure the remote shows it.
+            _LOGGER.debug("AR Remote: %s already running in %s, nothing to do", new.get("name"), room_id)
+            await self._set_current(room_id, new["id"])
+            return
+        if old is not None and old["id"] != new["id"] and self._switch_only(old, new):
+            await self._switch_activity(room_id, old, new)
+            return
         uses = await self._activity_entities(room_id, new)
         # A Room Off "stay on for X min" or an earlier pulse must not switch off
         # something this activity is about to use.
@@ -825,6 +855,42 @@ class ArRemoteRuntime:
         #    the background so the remote isn't kept waiting and Room Off (or
         #    another activity) can cancel it.
         self._cancel_inputs(room_id)
+        if targets or new.get("start_volume") is not None or (new.get("volume") and new.get("sound_mode")):
+            delay = 0.0 if targets and all(was_on.values()) else seconds(
+                new.get("input_delay"), DEFAULT_INPUT_DELAY
+            )
+            self._input_tasks[room_id] = self.hass.async_create_task(
+                self._switch_inputs(room_id, new, delay), "ar_remote inputs"
+            )
+
+    async def _switch_activity(self, room_id: str, old: dict, new: dict) -> None:
+        """Watch → Watch (or Listen → Listen): change sources only.
+
+        Lights, scenes and start / off steps stay as they are — the room is
+        already in its scene. Devices the old activity used and the new one
+        doesn't are switched off; the new one's devices that are off come on;
+        then the inputs switch (no wait when everything was already on).
+        """
+        old_core, new_core = self._core_entities(old), self._core_entities(new)
+        self._cancel_timers(room_id, new_core)
+        self._cancel_inputs(room_id)
+        # Devices only the old one needed (a different player, say). Never its
+        # lights or step targets: those belong to the scene, which stays.
+        await self._power_off(room_id, old_core - new_core)
+
+        targets = self._input_targets(new)
+        was_on = {eid: self._is_on(eid) for eid in targets}
+        for eid in (new.get("volume"), new.get("source"), *(d["entity"] for d in self._devices(new))):
+            if not eid:
+                continue
+            if eid in old_core:
+                # Shared with the old activity, so already on. An IR "on" button
+                # pressed again could toggle the device off: leave it.
+                if eid.split(".", 1)[0] in PRESS_DOMAINS or self._is_on(eid):
+                    continue
+            await self._turn_on(eid)
+        await self._set_current(room_id, new["id"])
+
         if targets or new.get("start_volume") is not None or (new.get("volume") and new.get("sound_mode")):
             delay = 0.0 if targets and all(was_on.values()) else seconds(
                 new.get("input_delay"), DEFAULT_INPUT_DELAY
@@ -888,69 +954,76 @@ class ArRemoteRuntime:
                 self._input_tasks.pop(room_id, None)
 
     def room_off_entities(self, room: dict) -> set[str]:
-        """What Room Off switches off besides the running activity."""
-        ents: set[str] = set()
-        for act in room.get("activities") or []:
-            ents |= self._core_entities(act) | self._pulse_entities(act)
-        if room.get("off_lights", True):
-            ents |= set(entity_list(room.get("lights")))
-        if room.get("off_climate") and room.get("climate"):
-            ents.add(room["climate"])
-        ents |= set(entity_list(room.get("off_extra")))
+        """What Room Off switches off besides the running activity (with the default choices)."""
+        plan = room_off_plan(room)
+        ents = plan["plain"] | plan["listed"]
+        for choice in plan["choices"]:
+            if choice["default_off"]:
+                ents |= set(choice["entities"])
         return ents
 
     @staticmethod
     def room_off_delayed(room: dict) -> dict[str, float]:
         """entity -> seconds it keeps running after Room Off."""
-        out: dict[str, float] = {}
-        for item in timed_list(room.get("off_delayed")):
-            secs = seconds(item.get("minutes")) * 60
-            if secs > 0:
-                out[item["entity"]] = secs
-        return out
+        return {e: m * 60 for e, m in room_off_plan(room)["delayed"].items()}
 
-    async def room_off(self, room_id: str | None) -> None:
+    async def room_off(self, room_id: str | None, choices: Any = None) -> None:
         """Everything in the room goes off; music pauses first.
 
-        Devices on the room's "keep running" list stay on for their own number
-        of minutes and then switch off by themselves.
+        Four groups (see project.room_off_plan): turns off · your choice (the
+        remote's Room Off sheet sends `choices`: id -> True = turn it off) ·
+        stays on for its own minutes · never touched.
         """
         room = self.room(room_id)
         if room is None:
             return
         room_id = room["id"]
+        choices = choices if isinstance(choices, dict) else {}
         async with self._lock(room_id):
-            delayed = self.room_off_delayed(room)
+            plan = room_off_plan(room)
+            delayed = {e: m * 60 for e, m in plan["delayed"].items()}
+            chosen_off: set[str] = set()
+            chosen_listed: set[str] = set()
+            left_on: set[str] = set()
+            for choice in plan["choices"]:
+                want = choices.get(choice["id"], choice["default_off"])
+                ents = set(choice["entities"])
+                if bool(want):
+                    (chosen_listed if choice["listed"] else chosen_off).update(ents)
+                else:
+                    left_on |= ents
+            never = plan["never"]
             current = self.activity(room_id, self.current.get(room_id))
-            # Devices the activity's "when it's switched off" steps handle are left to them.
-            hold = set(delayed) | self._end_step_entities(current)
-            rest = self.room_off_entities(room)
-            handled = rest | hold
+            # Devices the activity's "when it's switched off" steps handle are
+            # left to them; kept and never-touched devices are left alone.
+            keep = left_on | never
+            hold = set(delayed) | self._end_step_entities(current) | keep
+            plain = (plan["plain"] | chosen_off) - delayed.keys()
+            listed = (plan["listed"] | chosen_listed) - delayed.keys()
+            handled = plain | listed | hold
             if current:
                 handled |= await self._activity_entities(room_id, current)
             # Whatever happens to these now is decided here, not by an older timer
             # or an input switch still waiting to run.
-            self._cancel_timers(room_id, handled)
+            self._cancel_timers(room_id, handled - keep)
             self._cancel_inputs(room_id)
             self._cancel_sequences(room_id)
 
             report: dict[str, Any] = {"at": dt_util.now().isoformat(timespec="seconds")}
             done: set[str] = set()
             if current:
-                done |= await self._end_activity(room_id, current, hold, report)
-            # _switch_off leaves buttons alone (an activity's "projector on"
-            # button must not be pressed at Room Off); buttons on the room's own
-            # off list are pressed.
-            # Devices the room's activities use: their own "turn off with" command,
-            # else switched off. A device that was switched on by a button and has
-            # no off command can't be switched off and is reported.
-            off_list = set(entity_list(room.get("off_extra")))
-            await self._power_off(room_id, rest - off_list - done - hold, report)
-            # The room's own "also turn off" list: buttons / scripts on it are pressed.
-            await self._power_off(room_id, off_list - done - hold, report, listed=True)
+                done |= await self._end_activity(room_id, current, hold, report, seq_skip=never)
+            # Devices the room's activities use, the lights, the climate: their own
+            # "turn off with" command, else switched off. A device switched on by
+            # a button with no off command can't be switched off and is reported.
+            await self._power_off(room_id, plain - listed - done - hold, report)
+            # The room's own off lists: buttons / scripts on them are pressed.
+            await self._power_off(room_id, listed - done - hold, report, listed=True)
             for eid, secs in delayed.items():
                 self._schedule_off(room_id, eid, secs)
             report["kept_running_minutes"] = {e: round(v / 60, 1) for e, v in delayed.items()}
+            if left_on:
+                report["left_on"] = sorted(left_on)
             cant = report.get("cannot_power_off") or []
             report["note"] = (
                 "Nothing listed to switch off — add the room's devices to its activities or lists"

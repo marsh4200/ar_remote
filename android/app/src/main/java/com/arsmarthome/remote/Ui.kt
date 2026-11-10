@@ -154,3 +154,35 @@ fun Context.keyButton(text: String, active: Boolean = false, onClick: () -> Unit
         minHeight = dp(52)
         clickable { onClick() }
     }
+
+/** The lit round "bubble" behind a home icon (C4-style). Amber ring when [active]. */
+fun Context.bubble(active: Boolean, sizeDp: Int): Drawable = GradientDrawable().apply {
+    shape = GradientDrawable.OVAL
+    gradientType = GradientDrawable.RADIAL_GRADIENT
+    gradientRadius = dp(sizeDp) * 0.75f
+    setGradientCenter(0.35f, 0.28f)
+    colors = if (active) {
+        intArrayOf(Color.parseColor("#3A3326"), Color.parseColor("#221E17"), Color.parseColor("#15130F"))
+    } else {
+        intArrayOf(Color.parseColor("#2C333E"), Color.parseColor("#1B2029"), Color.parseColor("#12161C"))
+    }
+    if (active) setStroke(dp(2), Palette.accent) else setStroke(dp(1), Color.parseColor("#262C36"))
+}
+
+/**
+ * A home icon: the installer's own image when one is set (shown as it is),
+ * else the built-in vector, accent-coloured when [active].
+ */
+fun Context.homeGlyph(custom: android.graphics.Bitmap?, res: Int, active: Boolean, sizeDp: Int): ImageView =
+    ImageView(this).apply {
+        if (custom != null) {
+            setImageBitmap(custom)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        } else {
+            setImageResource(res)
+            imageTintList = ColorStateList.valueOf(if (active) Palette.accent else Palette.text)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp))
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }

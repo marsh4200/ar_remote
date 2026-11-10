@@ -111,12 +111,17 @@ async def test_composer_builds_room_activity_buttons(hass: HomeAssistant, client
     with patch("custom_components.ar_remote.async_setup_entry", return_value=True):
         flow = await hass.config_entries.options.async_init(entry.entry_id)
         assert flow["type"] is FlowResultType.MENU
-        assert flow["menu_options"] == ["add_room", "save"]
+        assert flow["menu_options"] == ["add_room", "ir_devices", "home_icons", "remote_settings", "save"]
 
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "add_room"})
         flow = await hass.config_entries.options.async_configure(
-            flow["flow_id"], {"name": "Living Room", "lights": ["light.a"]}
+            flow["flow_id"],
+            {"name": "Living Room", "lights": ["light.a"],
+             "your_choice": {"off_lights_mode": "ask_on", "off_climate_mode": "never"},
+             "never_touched": {"off_never": ["switch.pool_pump"]}},
         )
+        assert flow["step_id"] == "light_names"
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})
         assert flow["type"] is FlowResultType.MENU
         assert "add_activity" in flow["menu_options"]
 
@@ -148,6 +153,8 @@ async def test_composer_builds_room_activity_buttons(hass: HomeAssistant, client
     assert flow["type"] is FlowResultType.CREATE_ENTRY
     room = flow["data"]["project"]["rooms"][0]
     assert room["id"] == "living_room"
+    assert room["off_lights_mode"] == "ask_on" and room["off_never"] == ["switch.pool_pump"]
+    assert room["off_ask"] is True
     act = room["activities"][0]
     assert act["id"] == "apple_tv" and act["dpad"] == "remote.atv"
     assert act["slots"]["red"] == {"label": "Dim", "action": "script.dim"}
@@ -467,17 +474,21 @@ async def test_copy_activity_and_logo(hass: HomeAssistant, client) -> None:
         flow = await hass.config_entries.options.async_configure(
             flow["flow_id"], {"activity": "lounge/netflix", "name": "Prime"},
         )
-        assert flow["step_id"] == "edit_activity"
+        # The copy opens on its overview page; each part edits and comes back to it.
+        assert flow["step_id"] == "activity_menu"
+        assert "Projector" in flow["description_placeholders"]["summary"] or "projector" in flow["description_placeholders"]["summary"]
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "edit_activity"})
         flow = await hass.config_entries.options.async_configure(
             flow["flow_id"], {"name": "Prime", "kind": "watch", "source": "media_player.atv",
                               "command_set": "apple_tv", "logo": "/local/prime.png",
                               "devices": ["media_player.projector"]},
         )
-        assert flow["step_id"] == "sources"
+        assert flow["step_id"] == "activity_menu"
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "sources"})
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"source_input": "Prime Video", "media_player.projector input": "HDMI 2"})
-        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})  # start steps
-        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {})  # off steps
-        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"red_label": "Lights", "red_action": "script.dim"})
+        assert flow["step_id"] == "activity_menu"
+        assert "Prime Video" in flow["description_placeholders"]["summary"]
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "init"})
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "save"})
     acts = entry.options["project"]["rooms"][0]["activities"]
     prime = acts[1]
@@ -598,3 +609,167 @@ async def test_pulse_turn_off_on_start_and_room_off_timers(hass: HomeAssistant, 
     await hass.async_block_till_done()
     assert "switch.amp_power" in {c.data["entity_id"] for c in ha_off}
     assert rt.timers == {}
+
+
+async def test_watch_again_does_not_retrigger_and_watch_switch_is_sources_only(hass: HomeAssistant, client) -> None:
+    """Watch → Lights → Watch → Netflix again: nothing re-runs. Netflix → Apple TV: sources only."""
+    project = {"rooms": [{
+        "id": "lounge", "name": "Lounge", "lights": ["light.cove"], "activities": [
+            {"id": "netflix", "name": "Netflix", "kind": "watch", "slots": {}, "input_delay": 0,
+             "source": "media_player.tv", "source_input": "Netflix", "volume": "media_player.amp", "input": "TV",
+             "start_steps": [{"entities": ["light.cove"], "do": "dim", "level": 20, "wait": 0}],
+             "end_steps": [{"entities": ["light.cove"], "do": "dim", "level": 80, "wait": 0}]},
+            {"id": "atv", "name": "Apple TV", "kind": "watch", "slots": {}, "input_delay": 0,
+             "source": "media_player.atv", "volume": "media_player.amp", "input": "TV",
+             "devices": [{"entity": "media_player.tv", "source": "HDMI 1"}],
+             "start_steps": [{"entities": ["light.cove"], "do": "dim", "level": 20, "wait": 0}]},
+            {"id": "music", "name": "Music", "kind": "listen", "slots": {}, "input_delay": 0,
+             "source": "media_player.spotify", "volume": "media_player.amp", "input": "NET",
+             "start_steps": [{"entities": ["light.cove"], "do": "dim", "level": 50, "wait": 0}]},
+        ],
+    }]}
+    hass.config.internal_url = "http://192.168.88.2:8123"
+    assert await async_setup_component(hass, "http", {})
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={"host": HOST, "port": 8080, "adb_port": 5555, "webhook_id": "again"},
+        options={"project": project},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    light_on = async_mock_service(hass, "light", "turn_on")
+    mp_on = async_mock_service(hass, "media_player", "turn_on")
+    mp_off = async_mock_service(hass, "media_player", "turn_off")
+    async_mock_service(hass, "media_player", "media_pause")
+    select_source = async_mock_service(hass, "media_player", "select_source")
+    rt = entry.runtime_data
+
+    await rt.start_activity("lounge", "netflix")
+    await hass.async_block_till_done()
+    assert [c.data["brightness_pct"] for c in light_on] == [20]
+    # The devices are now on.
+    hass.states.async_set("media_player.tv", "on", {"source": "Netflix"})
+    hass.states.async_set("media_player.amp", "on", {"source": "TV"})
+    before = (len(light_on), len(mp_on), len(select_source))
+
+    # Back from Lights, Watch → Netflix again: nothing at all is re-run.
+    await rt.start_activity("lounge", "netflix")
+    await hass.async_block_till_done()
+    assert (len(light_on), len(mp_on), len(select_source)) == before
+    assert rt.current["lounge"] == "netflix"
+
+    # Netflix → Apple TV: the lights are left alone (no end steps, no start steps),
+    # Apple TV comes on, the TV moves to HDMI 1; the TV and amp are not switched off.
+    await rt.start_activity("lounge", "atv")
+    await hass.async_block_till_done()
+    assert len(light_on) == before[0]
+    assert "media_player.atv" in {c.data["entity_id"] for c in mp_on}
+    assert select_source[-1].data == {"entity_id": "media_player.tv", "source": "HDMI 1"}
+    assert not mp_off
+    assert rt.current["lounge"] == "atv"
+
+    # Watch → Listen is a different kind: the full start runs (lights to 50 %).
+    hass.states.async_set("media_player.atv", "playing", {})
+    await rt.start_activity("lounge", "music")
+    await hass.async_block_till_done()
+    assert light_on[-1].data["brightness_pct"] == 50
+
+
+async def test_running_activity_switched_off_elsewhere_starts_again(hass: HomeAssistant, client) -> None:
+    """HA thinks Netflix runs but the TV was switched off with another remote: start it properly."""
+    project = {"rooms": [{"id": "lounge", "name": "Lounge", "activities": [
+        {"id": "netflix", "name": "Netflix", "kind": "watch", "slots": {}, "input_delay": 0,
+         "source": "media_player.tv", "start_steps": [{"entities": ["light.cove"], "do": "on", "wait": 0}]},
+    ]}]}
+    hass.config.internal_url = "http://192.168.88.2:8123"
+    assert await async_setup_component(hass, "http", {})
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={"host": HOST, "port": 8080, "adb_port": 5555, "webhook_id": "offelse"},
+        options={"project": project},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    async_mock_service(hass, "media_player", "turn_on")
+    light_on = async_mock_service(hass, "light", "turn_on")
+    rt = entry.runtime_data
+    await rt.start_activity("lounge", "netflix")
+    await hass.async_block_till_done()
+    hass.states.async_set("media_player.tv", "off", {})
+    await rt.start_activity("lounge", "netflix")
+    await hass.async_block_till_done()
+    assert len(light_on) == 2
+
+
+async def test_room_off_groups_choices_and_never(hass: HomeAssistant, client) -> None:
+    """Turns off · your choice (defaults and the remote's choices) · stays on · never touched."""
+    project = {"rooms": [{
+        "id": "lounge", "name": "Lounge", "lights": ["light.down", "light.cove"], "climate": "climate.ac",
+        "off_lights_mode": "ask_off", "off_climate_mode": "ask_on",
+        "off_choice_on": ["fan.ceiling"], "off_never": ["switch.pool"],
+        "off_delayed": [{"entity": "light.passage", "minutes": 5}],
+        "activities": [{"id": "tv", "name": "TV", "kind": "watch", "source": "media_player.tv", "slots": {},
+                        "devices": [{"entity": "switch.pool", "source": None}]}],
+    }]}
+    hass.config.internal_url = "http://192.168.88.2:8123"
+    assert await async_setup_component(hass, "http", {})
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={"host": HOST, "port": 8080, "adb_port": 5555, "webhook_id": "groups"},
+        options={"project": project},
+    )
+    entry.add_to_hass(hass)
+    hass.states.async_set("media_player.tv", "on", {"friendly_name": "Samsung TV"})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    off_info = entry.runtime_data.project["rooms"][0]["off"]
+    assert off_info["ask"] is True
+    assert off_info["turns_off"] == ["Samsung TV"]  # the pool is never touched
+    assert [(c["id"], c["default_off"]) for c in off_info["choices"]] == [
+        ("lights", True), ("climate", False), ("fan.ceiling", False)]
+    assert off_info["stays_on"][0]["minutes"] == 5
+
+    async_mock_service(hass, "media_player", "media_pause")
+    mp_off = async_mock_service(hass, "media_player", "turn_off")
+    ha_off = async_mock_service(hass, "homeassistant", "turn_off")
+    rt = entry.runtime_data
+    rt.current["lounge"] = "tv"
+
+    # Power key: the defaults.
+    await rt.room_off("lounge")
+    await hass.async_block_till_done()
+    off = {c.data["entity_id"] for c in ha_off} | {c.data["entity_id"] for c in mp_off}
+    assert {"media_player.tv", "light.down", "light.cove"} <= off
+    assert not off & {"climate.ac", "fan.ceiling", "switch.pool", "light.passage"}
+    assert sorted(rt.last_room_off["lounge"]["left_on"]) == ["climate.ac", "fan.ceiling"]
+
+    # The sheet: keep the lights on, turn the aircon off.
+    ha_off.clear(); mp_off.clear()
+    rt.current["lounge"] = "tv"
+    await rt.room_off("lounge", {"lights": False, "climate": True})
+    await hass.async_block_till_done()
+    off = {c.data["entity_id"] for c in ha_off}
+    assert "climate.ac" in off
+    assert not off & {"light.down", "light.cove", "switch.pool"}
+
+
+async def test_home_icons_page(hass: HomeAssistant, client) -> None:
+    from custom_components.ar_remote.project import compile_project
+
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={"host": HOST, "port": 8080, "adb_port": 5555, "webhook_id": "w"},
+        options={"project": {"rooms": []}},
+    )
+    entry.add_to_hass(hass)
+    with patch("custom_components.ar_remote.async_setup_entry", return_value=True):
+        flow = await hass.config_entries.options.async_init(entry.entry_id)
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "home_icons"})
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"], {"home_style": "icons", "watch": "/local/icons/tv.png"},
+        )
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "save"})
+    dev = compile_project(hass, entry.options["project"])["device"]
+    assert dev["home_style"] == "icons"
+    assert dev["icons"]["watch"].startswith("/local/icons/tv.png?v=")
+    assert set(dev["icons"]) == {"watch"}
