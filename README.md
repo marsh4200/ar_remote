@@ -74,6 +74,20 @@ expects: `apple_tv`, `android_tv`, `roku`, `samsung_tv`, `lg_webos`,
 `ir_generic` (Broadlink / IR learned codes named `up`, `down`, `ok`, `back` …).
 Transport keys fall back to the source media player when the set has no command.
 
+## Changes in 2.9.2
+
+- **Realistic icons (C4-style).** 56 full-colour icons built into the remote: TV, projector, projector screen,
+  Blu-ray, media box, satellite dish, black floor speaker, ceiling speaker, soundbar, subwoofer, amplifier,
+  turntable, glowing bulb, downlight, pendant, floor lamp, wall aircon, thermostat, fireplace, wooden blinds,
+  curtains, garage, gate, door, lock, doorbell, rooms (lounge, bedroom, kitchen, pool, garden, bar, gym) and a red
+  Room Off button. *Home screen icons → Standard icons: Realistic* (the default) uses them for every home icon you
+  don't pick yourself; *Line* keeps the white outline icons.
+- **Icon library.** Any home icon, and any activity without a logo (*Icon (built-in library)*), can be set from the
+  library: the realistic icons plus 84 line icons. Realistic icons keep their colours; line icons take the accent
+  colour when active. Your own image or logo always wins.
+- Adding icons: realistic ones are SVG in `tools/realistic/icons.svg.html` → `node tools/realistic/render.js`;
+  line ones in `tools/make_icon_library.py`; then run `python3 tools/make_icon_library.py`.
+
 ## Changes in 2.9.1
 
 - **Icons only, really.** Uploaded home icons and activity logos have their plain background cut away (a white

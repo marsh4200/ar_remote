@@ -766,10 +766,13 @@ async def test_home_icons_page(hass: HomeAssistant, client) -> None:
         flow = await hass.config_entries.options.async_init(entry.entry_id)
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "home_icons"})
         flow = await hass.config_entries.options.async_configure(
-            flow["flow_id"], {"home_style": "icons", "watch": "/local/icons/tv.png"},
+            flow["flow_id"], {"home_style": "icons", "watch": "/local/icons/tv.png", "watch_icon": "projector",
+                              "lights_icon": "downlight"},
         )
         flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "save"})
     dev = compile_project(hass, entry.options["project"])["device"]
     assert dev["home_style"] == "icons"
     assert dev["icons"]["watch"].startswith("/local/icons/tv.png?v=")
-    assert set(dev["icons"]) == {"watch"}
+    # Your own image wins; a built-in icon is sent as icon:<name>, never versioned.
+    assert dev["icons"]["lights"] == "icon:downlight"
+    assert set(dev["icons"]) == {"watch", "lights"}

@@ -1,0 +1,735 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>AR Remote realistic icons</title>
+<style>
+body{margin:0;padding:28px;background:#0E1116;color:#E6E9EE;font:13px Inter,Roboto,sans-serif}
+main{display:grid;grid-template-columns:repeat(8,130px);gap:26px 18px}
+figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+svg{width:120px;height:120px}
+figcaption{text-align:center}
+</style>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <linearGradient id="blackBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3A3F47"/><stop offset="0.12" stop-color="#22262C"/><stop offset="1" stop-color="#0B0D10"/>
+    </linearGradient>
+    <linearGradient id="blackSide" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#16191D"/><stop offset="0.5" stop-color="#262A31"/><stop offset="1" stop-color="#101215"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8C95A1"/><stop offset="0.5" stop-color="#4A515B"/><stop offset="1" stop-color="#2A2F36"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD873" stop-opacity="0.55"/><stop offset="1" stop-color="#FFD873" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2B6CF6"/><stop offset="0.45" stop-color="#6A3BE0"/><stop offset="1" stop-color="#E0457B"/>
+    </linearGradient>
+    <linearGradient id="glare" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.06"/><stop offset="0.51" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="cone" cx="0.45" cy="0.4" r="0.65">
+      <stop offset="0" stop-color="#4A5058"/><stop offset="0.55" stop-color="#1A1D22"/><stop offset="0.85" stop-color="#2C3138"/><stop offset="1" stop-color="#0A0B0D"/>
+    </radialGradient>
+    <radialGradient id="cap" cx="0.4" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#6B727C"/><stop offset="1" stop-color="#15181C"/>
+    </radialGradient>
+    <linearGradient id="white" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="0.6" stop-color="#E9ECF0"/><stop offset="1" stop-color="#C5CBD3"/>
+    </linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2F4F7"/><stop offset="0.5" stop-color="#B8BEC7"/><stop offset="1" stop-color="#8A919B"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="0.4" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#9FD4FF"/><stop offset="0.35" stop-color="#2A6FD6"/><stop offset="0.8" stop-color="#0B1E45"/><stop offset="1" stop-color="#05070C"/>
+    </radialGradient>
+    <radialGradient id="warm" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#FFF7D6"/><stop offset="0.45" stop-color="#FFD873"/><stop offset="1" stop-color="#F2A541"/>
+    </radialGradient>
+    <radialGradient id="warmGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFC86B" stop-opacity="0.9"/><stop offset="1" stop-color="#FFC86B" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF7A6B"/><stop offset="0.5" stop-color="#E5392B"/><stop offset="1" stop-color="#A81E14"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE48A"/><stop offset="0.5" stop-color="#F5B83A"/><stop offset="1" stop-color="#C8811A"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#C8955E"/><stop offset="0.5" stop-color="#E0B27C"/><stop offset="1" stop-color="#B07E48"/>
+    </linearGradient>
+    <linearGradient id="blueDisp" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3FB8FF"/><stop offset="1" stop-color="#1B6FE0"/>
+    </linearGradient>
+    <radialGradient id="dial" cx="0.4" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9CFD7"/>
+    </radialGradient>
+    <linearGradient id="dish" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F4F6F8"/><stop offset="0.6" stop-color="#C3C9D1"/><stop offset="1" stop-color="#8E959F"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6E7680"/><stop offset="1" stop-color="#2F343B"/>
+    </linearGradient>
+    <linearGradient id="vinylLabel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF8A5B"/><stop offset="1" stop-color="#E5392B"/>
+    </linearGradient>
+  </defs>
+</svg>
+<main>
+
+<!-- TV -->
+<figure data-name="tv"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="8" y="18" width="112" height="72" rx="5" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="12" y="22" width="104" height="62" rx="2" fill="url(#screen)"/>
+    <rect x="12" y="22" width="104" height="62" rx="2" fill="url(#glare)"/>
+    <path d="M40 90 L34 104 H44 L48 90 Z M88 90 L94 104 H84 L80 90 Z" fill="#1A1D22"/>
+    <rect x="30" y="102" width="68" height="4" rx="2" fill="#2A2F36"/>
+  </g>
+</svg><figcaption>TV</figcaption></figure>
+
+<!-- Floor speaker -->
+<figure data-name="speaker"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="34" y="8" width="60" height="110" rx="8" fill="url(#blackSide)"/>
+    <rect x="34" y="8" width="60" height="110" rx="8" fill="url(#blackBody)" opacity="0.7" stroke="url(#rim)" stroke-width="2"/>
+    <circle cx="64" cy="32" r="11" fill="#0B0D10"/>
+    <circle cx="64" cy="32" r="8" fill="url(#cap)"/>
+    <circle cx="64" cy="76" r="25" fill="#0A0B0D"/>
+    <circle cx="64" cy="76" r="22" fill="url(#cone)"/>
+    <circle cx="64" cy="76" r="8" fill="url(#cap)"/>
+    <ellipse cx="57" cy="68" rx="9" ry="4" fill="#fff" opacity="0.08" transform="rotate(-30 57 68)"/>
+  </g>
+</svg><figcaption>Speaker</figcaption></figure>
+
+<!-- Ceiling speaker -->
+<figure data-name="ceiling_speaker"><svg viewBox="0 0 128 128">
+  <defs><pattern id="holes" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1.1" fill="#2B2F35"/></pattern></defs>
+  <g filter="url(#sh)">
+    <circle cx="64" cy="64" r="52" fill="url(#white)"/>
+    <circle cx="64" cy="64" r="45" fill="#D9DDE2"/>
+    <circle cx="64" cy="64" r="45" fill="url(#holes)" opacity="0.85"/>
+    <circle cx="64" cy="64" r="45" fill="none" stroke="#B9BFC7" stroke-width="2"/>
+    <ellipse cx="48" cy="42" rx="22" ry="9" fill="#fff" opacity="0.35" transform="rotate(-30 48 42)"/>
+  </g>
+</svg><figcaption>Ceiling speaker</figcaption></figure>
+
+<!-- Soundbar -->
+<figure data-name="soundbar"><svg viewBox="0 0 128 128">
+  <defs><pattern id="mesh" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="0.9" fill="#3E444C"/></pattern></defs>
+  <g filter="url(#sh)">
+    <rect x="4" y="50" width="120" height="28" rx="12" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="10" y="54" width="108" height="20" rx="9" fill="url(#mesh)"/>
+    <rect x="58" y="70" width="12" height="2" rx="1" fill="#3FB8FF"/>
+    <rect x="4" y="50" width="120" height="8" rx="4" fill="#fff" opacity="0.07"/>
+  </g>
+</svg><figcaption>Soundbar</figcaption></figure>
+
+<!-- Amplifier / AV receiver -->
+<figure data-name="amp"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="6" y="36" width="116" height="56" rx="6" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="6" y="36" width="116" height="5" rx="2.5" fill="#fff" opacity="0.08"/>
+    <rect x="18" y="52" width="46" height="14" rx="3" fill="#06131F"/>
+    <rect x="21" y="55" width="40" height="8" rx="2" fill="url(#blueDisp)" opacity="0.9"/>
+    <circle cx="96" cy="64" r="17" fill="url(#silver)"/>
+    <circle cx="96" cy="64" r="13" fill="url(#metal)"/>
+    <rect x="95" y="52" width="2" height="7" rx="1" fill="#E6E9EE"/>
+    <circle cx="22" cy="80" r="3" fill="#2E3339"/><circle cx="32" cy="80" r="3" fill="#2E3339"/><circle cx="42" cy="80" r="3" fill="#2E3339"/>
+    <rect x="12" y="92" width="10" height="4" rx="1" fill="#15181C"/><rect x="106" y="92" width="10" height="4" rx="1" fill="#15181C"/>
+  </g>
+</svg><figcaption>Amplifier</figcaption></figure>
+
+<!-- Projector -->
+<figure data-name="projector"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="10" y="44" width="108" height="48" rx="10" fill="url(#white)"/>
+    <rect x="10" y="44" width="108" height="8" rx="4" fill="#fff" opacity="0.8"/>
+    <circle cx="84" cy="68" r="18" fill="#2A2F36"/>
+    <circle cx="84" cy="68" r="14" fill="url(#lens)"/>
+    <circle cx="79" cy="63" r="4" fill="#fff" opacity="0.6"/>
+    <rect x="22" y="60" width="30" height="3" rx="1.5" fill="#B3B9C2"/>
+    <rect x="22" y="67" width="30" height="3" rx="1.5" fill="#B3B9C2"/>
+    <rect x="22" y="74" width="30" height="3" rx="1.5" fill="#B3B9C2"/>
+    <rect x="20" y="92" width="10" height="5" rx="2" fill="#9AA1AB"/><rect x="98" y="92" width="10" height="5" rx="2" fill="#9AA1AB"/>
+  </g>
+</svg><figcaption>Projector</figcaption></figure>
+
+<!-- Streaming box -->
+<figure data-name="streamer"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M22 70 L64 92 L106 70 L106 80 L64 102 L22 80 Z" fill="#0B0D10"/>
+    <path d="M22 70 L64 48 L106 70 L64 92 Z" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <path d="M22 70 L64 48 L106 70 L64 92 Z" fill="url(#glare)" opacity="0.6"/>
+    <circle cx="96" cy="78" r="1.6" fill="#E6E9EE"/>
+  </g>
+  <rect x="50" y="18" width="28" height="44" rx="10" fill="url(#silver)" filter="url(#sh)"/>
+  <circle cx="64" cy="30" r="6" fill="#2A2F36"/>
+  <circle cx="58" cy="46" r="2" fill="#2A2F36"/><circle cx="70" cy="46" r="2" fill="#2A2F36"/>
+</svg><figcaption>Streaming box</figcaption></figure>
+
+<!-- Satellite dish -->
+<figure data-name="satellite"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M58 82 L52 114 H76 L70 82 Z" fill="url(#metal)"/>
+    <ellipse cx="60" cy="56" rx="40" ry="34" fill="url(#dish)" transform="rotate(-25 60 56)"/>
+    <ellipse cx="62" cy="58" rx="32" ry="26" fill="#DDE2E8" transform="rotate(-25 62 58)" opacity="0.6"/>
+    <path d="M64 60 L100 30" stroke="#5C636D" stroke-width="4" stroke-linecap="round"/>
+    <rect x="96" y="22" width="14" height="12" rx="3" fill="#2F343B" transform="rotate(-40 103 28)"/>
+  </g>
+</svg><figcaption>Satellite / DStv</figcaption></figure>
+
+<!-- Game controller -->
+<figure data-name="game"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M38 40 H90 C108 40 120 56 118 76 L114 92 C111 104 98 106 92 98 L84 86 H44 L36 98 C30 106 17 104 14 92 L10 76 C8 56 20 40 38 40 Z" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="30" y="58" width="6" height="20" rx="2" fill="#3A3F47"/><rect x="23" y="65" width="20" height="6" rx="2" fill="#3A3F47"/>
+    <circle cx="94" cy="58" r="4.5" fill="#3FB8FF"/><circle cx="104" cy="68" r="4.5" fill="#E5392B"/>
+    <circle cx="84" cy="68" r="4.5" fill="#F5B83A"/><circle cx="94" cy="78" r="4.5" fill="#4CC38A"/>
+    <circle cx="54" cy="78" r="7" fill="#2A2F36"/><circle cx="74" cy="78" r="7" fill="#2A2F36"/>
+  </g>
+</svg><figcaption>Games</figcaption></figure>
+
+<!-- Vinyl / music -->
+<figure data-name="music"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <circle cx="64" cy="64" r="54" fill="#0B0D10" stroke="url(#rim)" stroke-width="2.5"/>
+    <circle cx="64" cy="64" r="48" fill="none" stroke="#1E2228" stroke-width="2"/>
+    <circle cx="64" cy="64" r="40" fill="none" stroke="#1E2228" stroke-width="2"/>
+    <circle cx="64" cy="64" r="32" fill="none" stroke="#1E2228" stroke-width="2"/>
+    <path d="M30 34 A48 48 0 0 1 64 16" stroke="#fff" stroke-opacity="0.25" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <circle cx="64" cy="64" r="18" fill="url(#vinylLabel)"/>
+    <circle cx="64" cy="64" r="3" fill="#0B0D10"/>
+  </g>
+</svg><figcaption>Music</figcaption></figure>
+
+<!-- Light bulb -->
+<figure data-name="bulb"><svg viewBox="0 0 128 128">
+  <circle cx="64" cy="50" r="44" fill="url(#warmGlow)" filter="url(#glow)"/>
+  <g filter="url(#sh)">
+    <path d="M64 10 C42 10 28 27 28 46 C28 60 36 68 42 76 C46 81 47 86 47 90 H81 C81 86 82 81 86 76 C92 68 100 60 100 46 C100 27 86 10 64 10 Z" fill="url(#warm)"/>
+    <ellipse cx="50" cy="32" rx="8" ry="14" fill="#fff" opacity="0.55" transform="rotate(25 50 32)"/>
+    <rect x="46" y="90" width="36" height="22" rx="4" fill="url(#silver)"/>
+    <rect x="46" y="96" width="36" height="2.5" fill="#8A919B"/><rect x="46" y="103" width="36" height="2.5" fill="#8A919B"/>
+    <path d="M54 112 H74 L70 118 H58 Z" fill="#5C636D"/>
+  </g>
+</svg><figcaption>Lights</figcaption></figure>
+
+<!-- Downlight -->
+<figure data-name="downlight"><svg viewBox="0 0 128 128">
+  <path d="M36 54 L14 118 H114 L92 54 Z" fill="url(#beam)"/>
+  <ellipse cx="64" cy="96" rx="46" ry="16" fill="url(#warmGlow)" filter="url(#glow)" opacity="0.8"/>
+  <g filter="url(#sh)">
+    <ellipse cx="64" cy="46" rx="50" ry="20" fill="url(#white)"/>
+    <ellipse cx="64" cy="47" rx="38" ry="14" fill="#C9CFD7"/>
+    <ellipse cx="64" cy="49" rx="30" ry="10" fill="url(#warm)"/>
+    <ellipse cx="56" cy="46" rx="10" ry="3" fill="#fff" opacity="0.7"/>
+  </g>
+</svg><figcaption>Downlights</figcaption></figure>
+
+<!-- Wall aircon -->
+<figure data-name="aircon"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M8 34 Q8 26 16 26 H112 Q120 26 120 34 V62 Q120 72 110 72 H18 Q8 72 8 62 Z" fill="url(#white)"/>
+    <rect x="16" y="60" width="96" height="6" rx="3" fill="#B9BFC7"/>
+    <rect x="94" y="36" width="14" height="5" rx="2.5" fill="#3FB8FF"/>
+  </g>
+  <path d="M30 82 q6 8 0 16 q-6 8 0 16" stroke="#7CC8FF" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M64 82 q6 8 0 16 q-6 8 0 16" stroke="#7CC8FF" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M98 82 q6 8 0 16 q-6 8 0 16" stroke="#7CC8FF" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg><figcaption>Comfort / aircon</figcaption></figure>
+
+<!-- Thermostat -->
+<figure data-name="thermostat"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <circle cx="64" cy="64" r="52" fill="url(#silver)"/>
+    <circle cx="64" cy="64" r="44" fill="#14171B"/>
+    <path d="M30 86 A40 40 0 0 1 64 24" stroke="#3FB8FF" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M64 24 A40 40 0 0 1 98 86" stroke="#F2A541" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <text x="64" y="74" text-anchor="middle" font-family="Inter,Roboto,sans-serif" font-size="28" font-weight="600" fill="#F3F4F6">22°</text>
+  </g>
+</svg><figcaption>Thermostat</figcaption></figure>
+
+<!-- Blinds -->
+<figure data-name="blinds"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="14" y="12" width="100" height="10" rx="3" fill="url(#silver)"/>
+    <g fill="url(#wood)">
+      <rect x="18" y="26" width="92" height="9" rx="2"/><rect x="18" y="38" width="92" height="9" rx="2"/>
+      <rect x="18" y="50" width="92" height="9" rx="2"/><rect x="18" y="62" width="92" height="9" rx="2"/>
+      <rect x="18" y="74" width="92" height="9" rx="2"/><rect x="18" y="86" width="92" height="9" rx="2"/>
+    </g>
+    <rect x="16" y="98" width="96" height="6" rx="3" fill="#8A6236"/>
+    <path d="M100 22 V112" stroke="#C9CFD7" stroke-width="1.5"/>
+    <circle cx="100" cy="114" r="3" fill="#C9CFD7"/>
+  </g>
+</svg><figcaption>Shades / blinds</figcaption></figure>
+
+<!-- Gate -->
+<figure data-name="gate"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="6" y="26" width="12" height="90" rx="2" fill="url(#metal)"/>
+    <rect x="110" y="26" width="12" height="90" rx="2" fill="url(#metal)"/>
+    <path d="M18 44 Q64 26 110 44" stroke="#2F343B" stroke-width="6" fill="none"/>
+    <rect x="18" y="98" width="92" height="6" fill="#2F343B"/>
+    <g stroke="#3A4048" stroke-width="5">
+      <path d="M30 40 V98"/><path d="M44 36 V98"/><path d="M58 34 V98"/><path d="M72 34 V98"/><path d="M86 36 V98"/><path d="M100 40 V98"/>
+    </g>
+    <rect x="4" y="20" width="16" height="8" rx="2" fill="#5C636D"/><rect x="108" y="20" width="16" height="8" rx="2" fill="#5C636D"/>
+  </g>
+</svg><figcaption>Gate</figcaption></figure>
+
+<!-- Favourite star -->
+<figure data-name="star"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M64 10 L79 44 L116 48 L88 73 L96 110 L64 91 L32 110 L40 73 L12 48 L49 44 Z" fill="url(#gold)" stroke="#B87314" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M64 18 L76 46 L64 60 Z" fill="#fff" opacity="0.35"/>
+  </g>
+</svg><figcaption>Favourites</figcaption></figure>
+
+<!-- Room off -->
+<figure data-name="power"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <circle cx="64" cy="64" r="50" fill="url(#red)"/>
+    <ellipse cx="64" cy="36" rx="34" ry="16" fill="#fff" opacity="0.22"/>
+    <path d="M64 36 V64" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+    <path d="M84 46 A28 28 0 1 1 44 46" stroke="#fff" stroke-width="9" fill="none" stroke-linecap="round"/>
+  </g>
+</svg><figcaption>Room Off</figcaption></figure>
+
+<!-- ===================== WATCH ===================== -->
+<figure data-name="screen"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="8" y="10" width="112" height="10" rx="5" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="1.5"/>
+    <rect x="14" y="20" width="100" height="72" fill="url(#white)"/>
+    <rect x="14" y="20" width="100" height="72" fill="url(#screen)" opacity="0.18"/>
+    <rect x="12" y="92" width="104" height="6" rx="3" fill="#2A2F36"/>
+    <path d="M64 98 V108" stroke="#8A919B" stroke-width="2"/><circle cx="64" cy="111" r="3.5" fill="#C9CFD7"/>
+  </g>
+</svg><figcaption>Projector screen</figcaption></figure>
+
+<figure data-name="bluray"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="6" y="56" width="116" height="30" rx="5" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="16" y="64" width="52" height="5" rx="2.5" fill="#05070A"/>
+    <rect x="80" y="64" width="22" height="9" rx="2" fill="#06131F"/><rect x="82" y="66" width="18" height="5" rx="1" fill="url(#blueDisp)"/>
+    <circle cx="110" cy="70" r="3" fill="#3A4048"/>
+  </g>
+  <g filter="url(#sh)">
+    <circle cx="44" cy="40" r="26" fill="url(#silver)"/>
+    <circle cx="44" cy="40" r="26" fill="url(#screen)" opacity="0.35"/>
+    <circle cx="44" cy="40" r="7" fill="#0E1116"/><circle cx="44" cy="40" r="3" fill="#C9CFD7"/>
+    <path d="M28 26 A22 22 0 0 1 44 18" stroke="#fff" stroke-opacity="0.7" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg><figcaption>Blu-ray / DVD</figcaption></figure>
+
+<figure data-name="movie"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="14" y="50" width="100" height="62" rx="5" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="14" y="50" width="100" height="14" fill="url(#white)"/>
+    <path d="M24 50 L34 64 M44 50 L54 64 M64 50 L74 64 M84 50 L94 64 M104 50 L112 61" stroke="#14171B" stroke-width="7"/>
+    <g transform="rotate(-16 14 44)">
+      <rect x="14" y="30" width="100" height="14" rx="2" fill="url(#white)"/>
+      <path d="M24 30 L34 44 M44 30 L54 44 M64 30 L74 44 M84 30 L94 44 M104 30 L112 41" stroke="#14171B" stroke-width="7"/>
+    </g>
+    <circle cx="18" cy="48" r="4" fill="url(#silver)"/>
+    <rect x="26" y="76" width="44" height="4" rx="2" fill="#4A515B"/><rect x="26" y="88" width="30" height="4" rx="2" fill="#4A515B"/>
+  </g>
+</svg><figcaption>Movies</figcaption></figure>
+
+<figure data-name="popcorn"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <g fill="#FFF3C9" stroke="#E8C77A" stroke-width="1.5">
+      <circle cx="42" cy="34" r="12"/><circle cx="60" cy="24" r="13"/><circle cx="80" cy="30" r="12"/><circle cx="92" cy="44" r="10"/>
+      <circle cx="34" cy="46" r="10"/><circle cx="54" cy="40" r="12"/><circle cx="74" cy="42" r="12"/>
+    </g>
+    <path d="M28 48 H100 L90 118 H38 Z" fill="#fff"/>
+    <path d="M38 48 H50 L52 118 H42 Z M62 48 H74 L72 118 H62 Z M86 48 H98 L90 118 H82 Z" fill="#E5392B"/>
+    <rect x="26" y="46" width="76" height="6" rx="2" fill="#C8281C"/>
+  </g>
+</svg><figcaption>Cinema</figcaption></figure>
+
+<figure data-name="cctv"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="86" y="14" width="30" height="18" rx="4" fill="url(#white)"/>
+    <path d="M100 30 V44 L84 52" stroke="#B9BFC7" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <g transform="rotate(18 56 60)">
+      <rect x="14" y="44" width="80" height="34" rx="14" fill="url(#white)"/>
+      <rect x="14" y="44" width="80" height="10" rx="5" fill="#fff"/>
+      <rect x="6" y="46" width="18" height="30" rx="8" fill="#2A2F36"/>
+      <circle cx="15" cy="61" r="9" fill="url(#lens)"/>
+      <circle cx="12" cy="58" r="2.5" fill="#fff" opacity="0.7"/>
+      <circle cx="84" cy="52" r="2" fill="#E5392B"/>
+    </g>
+  </g>
+</svg><figcaption>Camera / CCTV</figcaption></figure>
+
+<figure data-name="sport"><svg viewBox="0 0 128 128">
+  <defs><clipPath id="ballClip"><circle cx="64" cy="64" r="52"/></clipPath></defs>
+  <g filter="url(#sh)">
+    <circle cx="64" cy="64" r="52" fill="url(#dial)"/>
+    <g clip-path="url(#ballClip)" fill="#1A1D22">
+      <path d="M64 46 L81 58 L74 78 H54 L47 58 Z"/>
+      <path d="M52 8 H76 L80 20 L64 30 L48 20 Z"/>
+      <path d="M118 50 L122 74 L110 80 L98 68 L104 52 Z"/>
+      <path d="M10 50 L6 74 L18 80 L30 68 L24 52 Z"/>
+      <path d="M86 118 L100 102 L92 92 L76 96 L76 112 Z"/>
+      <path d="M42 118 L28 102 L36 92 L52 96 L52 112 Z"/>
+    </g>
+    <g stroke="#1A1D22" stroke-width="2.5" clip-path="url(#ballClip)">
+      <path d="M64 46 V30 M81 58 L98 68 M74 78 L76 96 M54 78 L52 96 M47 58 L30 68"/>
+    </g>
+    <circle cx="64" cy="64" r="52" fill="none" stroke="#B9BFC7" stroke-width="2"/>
+    <ellipse cx="44" cy="36" rx="16" ry="7" fill="#fff" opacity="0.45" transform="rotate(-30 44 36)"/>
+  </g>
+</svg><figcaption>Sport</figcaption></figure>
+
+<figure data-name="media_box"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="18" y="50" width="92" height="30" rx="12" fill="#0B0D10" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="18" y="42" width="92" height="30" rx="12" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <ellipse cx="64" cy="50" rx="36" ry="5" fill="#fff" opacity="0.1"/>
+    <circle cx="64" cy="57" r="6" fill="none" stroke="#5C636D" stroke-width="2"/>
+  </g>
+</svg><figcaption>Media box</figcaption></figure>
+
+<!-- ===================== LISTEN ===================== -->
+<figure data-name="subwoofer"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="18" y="18" width="92" height="96" rx="10" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <circle cx="64" cy="66" r="38" fill="#0A0B0D"/>
+    <circle cx="64" cy="66" r="34" fill="url(#cone)"/>
+    <circle cx="64" cy="66" r="13" fill="url(#cap)"/>
+    <ellipse cx="52" cy="52" rx="12" ry="5" fill="#fff" opacity="0.08" transform="rotate(-30 52 52)"/>
+    <rect x="24" y="114" width="12" height="4" rx="1" fill="#15181C"/><rect x="92" y="114" width="12" height="4" rx="1" fill="#15181C"/>
+  </g>
+</svg><figcaption>Subwoofer</figcaption></figure>
+
+<figure data-name="headphones"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M22 76 V62 A42 42 0 0 1 106 62 V76" stroke="url(#metal)" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M22 70 V62 A42 42 0 0 1 106 62 V70" stroke="#fff" stroke-opacity="0.15" stroke-width="2" fill="none"/>
+    <rect x="10" y="66" width="30" height="46" rx="14" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="88" y="66" width="30" height="46" rx="14" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="30" y="72" width="10" height="34" rx="5" fill="#3A3F47"/><rect x="88" y="72" width="10" height="34" rx="5" fill="#3A3F47"/>
+  </g>
+</svg><figcaption>Headphones</figcaption></figure>
+
+<figure data-name="radio"><svg viewBox="0 0 128 128">
+  <defs><pattern id="cloth" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#D9C7A4"/><path d="M0 4 L4 0" stroke="#BFA97F" stroke-width="1"/></pattern></defs>
+  <g filter="url(#sh)">
+    <path d="M28 34 L90 14" stroke="#C9CFD7" stroke-width="3" stroke-linecap="round"/>
+    <rect x="8" y="34" width="112" height="76" rx="12" fill="url(#wood)"/>
+    <rect x="18" y="44" width="56" height="56" rx="8" fill="url(#cloth)"/>
+    <rect x="82" y="46" width="28" height="14" rx="3" fill="#FFF3C9"/><path d="M86 56 V50 M92 56 V52 M98 56 V50 M104 56 V52" stroke="#8A6236" stroke-width="1.5"/>
+    <circle cx="90" cy="82" r="8" fill="url(#silver)"/><circle cx="106" cy="82" r="5" fill="url(#silver)"/>
+  </g>
+</svg><figcaption>Radio</figcaption></figure>
+
+<figure data-name="mic"><svg viewBox="0 0 128 128">
+  <defs><pattern id="mgrid" width="5" height="5" patternUnits="userSpaceOnUse"><rect width="5" height="5" fill="#B8BEC7"/><circle cx="2.5" cy="2.5" r="1.2" fill="#5C636D"/></pattern></defs>
+  <g filter="url(#sh)">
+    <path d="M58 64 L70 64 L66 118 H62 Z" fill="url(#blackBody)"/>
+    <rect x="52" y="58" width="24" height="14" rx="4" fill="url(#silver)"/>
+    <circle cx="64" cy="36" r="26" fill="url(#mgrid)"/>
+    <circle cx="64" cy="36" r="26" fill="url(#glare)" opacity="0.8"/>
+    <circle cx="64" cy="36" r="26" fill="none" stroke="#8A919B" stroke-width="2"/>
+  </g>
+</svg><figcaption>Karaoke / mic</figcaption></figure>
+
+<figure data-name="smart_speaker"><svg viewBox="0 0 128 128">
+  <defs><pattern id="fabric" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="#5A606A"/><circle cx="1.5" cy="1.5" r="0.7" fill="#474C55"/></pattern></defs>
+  <g filter="url(#sh)">
+    <path d="M30 26 H98 V104 A34 10 0 0 1 30 104 Z" fill="url(#fabric)"/>
+    <path d="M30 26 H44 V110 A34 10 0 0 1 30 104 Z" fill="#000" opacity="0.18"/>
+    <ellipse cx="64" cy="26" rx="34" ry="10" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="1.5"/>
+    <ellipse cx="64" cy="26" rx="22" ry="5" fill="none" stroke="#3FB8FF" stroke-width="2.5"/>
+  </g>
+</svg><figcaption>Smart speaker</figcaption></figure>
+
+<figure data-name="turntable"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="8" y="24" width="112" height="84" rx="8" fill="url(#wood)"/>
+    <rect x="8" y="100" width="112" height="8" rx="4" fill="#8A6236"/>
+    <circle cx="54" cy="64" r="34" fill="#0B0D10"/>
+    <circle cx="54" cy="64" r="26" fill="none" stroke="#22262C" stroke-width="2"/>
+    <circle cx="54" cy="64" r="11" fill="url(#vinylLabel)"/>
+    <circle cx="102" cy="36" r="6" fill="url(#silver)"/>
+    <path d="M102 36 L104 82 L84 92" stroke="url(#silver)" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+</svg><figcaption>Turntable</figcaption></figure>
+
+<!-- ===================== LIGHTS ===================== -->
+<figure data-name="pendant"><svg viewBox="0 0 128 128">
+  <ellipse cx="64" cy="100" rx="40" ry="18" fill="url(#warmGlow)" filter="url(#glow)"/>
+  <g filter="url(#sh)">
+    <path d="M64 4 V40" stroke="#2A2F36" stroke-width="2"/>
+    <rect x="58" y="36" width="12" height="8" rx="2" fill="#1A1D22"/>
+    <path d="M64 42 C36 42 22 66 20 86 H108 C106 66 92 42 64 42 Z" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <ellipse cx="64" cy="86" rx="44" ry="7" fill="url(#warm)"/>
+    <ellipse cx="44" cy="58" rx="6" ry="12" fill="#fff" opacity="0.12" transform="rotate(35 44 58)"/>
+  </g>
+</svg><figcaption>Pendant</figcaption></figure>
+
+<figure data-name="floor_lamp"><svg viewBox="0 0 128 128">
+  <circle cx="64" cy="34" r="30" fill="url(#warmGlow)" filter="url(#glow)"/>
+  <g filter="url(#sh)">
+    <path d="M42 12 H86 L98 50 H30 Z" fill="#FFF1D2"/>
+    <path d="M42 12 H86 L98 50 H30 Z" fill="url(#warmGlow)" opacity="0.6"/>
+    <path d="M64 50 V112" stroke="#9AA1AB" stroke-width="4"/>
+    <ellipse cx="64" cy="114" rx="22" ry="6" fill="url(#metal)"/>
+  </g>
+</svg><figcaption>Floor lamp</figcaption></figure>
+
+<figure data-name="led_strip"><svg viewBox="0 0 128 128">
+  <rect x="6" y="52" width="116" height="24" rx="12" fill="#B48CFF" opacity="0.5" filter="url(#glow)"/>
+  <g filter="url(#sh)">
+    <rect x="8" y="58" width="112" height="12" rx="6" fill="#F3F0FF"/>
+    <g fill="#fff"><circle cx="18" cy="64" r="3"/><circle cx="34" cy="64" r="3"/><circle cx="50" cy="64" r="3"/><circle cx="66" cy="64" r="3"/><circle cx="82" cy="64" r="3"/><circle cx="98" cy="64" r="3"/><circle cx="112" cy="64" r="3"/></g>
+  </g>
+  <rect x="8" y="58" width="112" height="12" rx="6" fill="url(#screen)" opacity="0.45"/>
+</svg><figcaption>LED strip</figcaption></figure>
+
+<figure data-name="scene"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M58 14 L68 46 L100 56 L68 66 L58 98 L48 66 L16 56 L48 46 Z" fill="url(#gold)"/>
+    <path d="M98 76 L103 91 L118 96 L103 101 L98 116 L93 101 L78 96 L93 91 Z" fill="url(#gold)"/>
+    <path d="M100 14 L103 23 L112 26 L103 29 L100 38 L97 29 L88 26 L97 23 Z" fill="#FFF3C9"/>
+    <path d="M58 22 L64 46 L58 52 Z" fill="#fff" opacity="0.45"/>
+  </g>
+</svg><figcaption>Scene</figcaption></figure>
+
+<!-- ===================== COMFORT ===================== -->
+<figure data-name="fan"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M64 6 V30" stroke="#2A2F36" stroke-width="5"/>
+    <rect x="52" y="4" width="24" height="6" rx="3" fill="url(#silver)"/>
+    <ellipse cx="34" cy="48" rx="34" ry="8" fill="url(#wood)" transform="rotate(8 34 48)"/>
+    <ellipse cx="94" cy="48" rx="34" ry="8" fill="url(#wood)" transform="rotate(-8 94 48)"/>
+    <ellipse cx="64" cy="58" rx="9" ry="22" fill="url(#wood)" opacity="0.85"/>
+    <ellipse cx="64" cy="44" rx="16" ry="10" fill="url(#silver)"/>
+    <path d="M52 52 H76 L72 64 H56 Z" fill="#FFF1D2"/>
+  </g>
+</svg><figcaption>Ceiling fan</figcaption></figure>
+
+<figure data-name="fireplace"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="fire" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#E5392B"/><stop offset="0.5" stop-color="#F5891F"/><stop offset="1" stop-color="#FFE48A"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <rect x="8" y="16" width="112" height="100" rx="6" fill="#8E959F"/>
+    <path d="M8 16 H120 V26 H8 Z" fill="#B8BEC7"/>
+    <g stroke="#6E7680" stroke-width="2"><path d="M8 46 H120 M8 70 H120 M8 94 H120 M40 26 V46 M88 26 V46 M64 46 V70 M24 70 V94 M104 70 V94"/></g>
+    <path d="M28 116 V64 A36 36 0 0 1 100 64 V116 Z" fill="#14171B"/>
+    <path d="M64 112 C46 112 42 98 50 86 C52 94 56 96 58 96 C54 84 60 74 68 68 C66 80 76 84 78 94 C82 90 82 86 82 84 C88 92 86 112 64 112 Z" fill="url(#fire)"/>
+    <rect x="38" y="108" width="52" height="6" rx="3" fill="#6B4425"/>
+  </g>
+</svg><figcaption>Fireplace</figcaption></figure>
+
+<figure data-name="heater"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="10" y="30" width="108" height="62" rx="8" fill="url(#white)"/>
+    <g stroke="#C5CBD3" stroke-width="3"><path d="M24 44 V82 M36 44 V82 M48 44 V82 M60 44 V82 M72 44 V82 M84 44 V82"/></g>
+    <rect x="96" y="44" width="12" height="6" rx="3" fill="#F2A541"/>
+    <circle cx="102" cy="68" r="6" fill="url(#silver)"/>
+    <rect x="18" y="92" width="10" height="10" rx="2" fill="#9AA1AB"/><rect x="100" y="92" width="10" height="10" rx="2" fill="#9AA1AB"/>
+  </g>
+  <path d="M34 22 q4 -6 0 -12 M52 22 q4 -6 0 -12 M70 22 q4 -6 0 -12" stroke="#F5891F" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/>
+</svg><figcaption>Heater</figcaption></figure>
+
+<!-- ===================== SHADES & ACCESS ===================== -->
+<figure data-name="curtains"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="drape" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5A6270"/><stop offset="0.25" stop-color="#8C95A1"/><stop offset="0.5" stop-color="#5A6270"/><stop offset="0.75" stop-color="#8C95A1"/><stop offset="1" stop-color="#5A6270"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <rect x="10" y="22" width="108" height="76" fill="#9FD4FF" opacity="0.35"/>
+    <rect x="4" y="12" width="120" height="7" rx="3.5" fill="url(#silver)"/>
+    <path d="M10 18 H48 C46 50 40 80 44 116 H10 Z" fill="url(#drape)"/>
+    <path d="M118 18 H80 C82 50 88 80 84 116 H118 Z" fill="url(#drape)"/>
+  </g>
+</svg><figcaption>Curtains</figcaption></figure>
+
+<figure data-name="shutter"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="10" y="10" width="108" height="16" rx="4" fill="url(#silver)"/>
+    <rect x="16" y="26" width="96" height="86" fill="#C5CBD3"/>
+    <g fill="url(#silver)">
+      <rect x="16" y="26" width="96" height="9"/><rect x="16" y="37" width="96" height="9"/><rect x="16" y="48" width="96" height="9"/>
+      <rect x="16" y="59" width="96" height="9"/><rect x="16" y="70" width="96" height="9"/><rect x="16" y="81" width="96" height="9"/>
+    </g>
+    <rect x="16" y="92" width="96" height="6" fill="#5C636D"/>
+    <rect x="16" y="98" width="96" height="14" fill="#9FD4FF" opacity="0.4"/>
+  </g>
+</svg><figcaption>Roller shutter</figcaption></figure>
+
+<figure data-name="garage"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M6 50 L64 12 L122 50 V116 H6 Z" fill="#E9ECF0"/>
+    <path d="M2 52 L64 10 L126 52" stroke="#5C636D" stroke-width="6" fill="none" stroke-linejoin="round"/>
+    <rect x="22" y="56" width="84" height="60" fill="url(#silver)"/>
+    <g stroke="#8A919B" stroke-width="2"><path d="M22 68 H106 M22 80 H106 M22 92 H106 M22 104 H106"/></g>
+    <rect x="56" y="98" width="16" height="3" rx="1.5" fill="#5C636D"/>
+  </g>
+</svg><figcaption>Garage</figcaption></figure>
+
+<figure data-name="door"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="doorWood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7A4E2A"/><stop offset="0.5" stop-color="#9C6638"/><stop offset="1" stop-color="#6E4524"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <rect x="26" y="6" width="76" height="114" rx="3" fill="#E9ECF0"/>
+    <rect x="32" y="12" width="64" height="108" fill="url(#doorWood)"/>
+    <rect x="40" y="20" width="48" height="36" rx="2" fill="none" stroke="#5E3A1C" stroke-width="2.5"/>
+    <rect x="40" y="64" width="48" height="46" rx="2" fill="none" stroke="#5E3A1C" stroke-width="2.5"/>
+    <circle cx="86" cy="64" r="4" fill="url(#gold)"/>
+  </g>
+</svg><figcaption>Door</figcaption></figure>
+
+<figure data-name="lock"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M40 58 V40 A24 24 0 0 1 88 40 V58" stroke="url(#silver)" stroke-width="12" fill="none"/>
+    <rect x="24" y="54" width="80" height="64" rx="12" fill="url(#gold)"/>
+    <rect x="24" y="54" width="80" height="12" rx="6" fill="#fff" opacity="0.25"/>
+    <circle cx="64" cy="82" r="8" fill="#5E3A1C"/><path d="M60 86 H68 L66 100 H62 Z" fill="#5E3A1C"/>
+  </g>
+</svg><figcaption>Lock</figcaption></figure>
+
+<figure data-name="alarm"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="blueShield" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5EC2FF"/><stop offset="1" stop-color="#1B5FD0"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <path d="M64 8 L108 24 V60 C108 90 88 110 64 120 C40 110 20 90 20 60 V24 Z" fill="url(#blueShield)"/>
+    <path d="M64 8 L108 24 V60 C108 64 107 68 106 72 L64 40 Z" fill="#fff" opacity="0.18"/>
+    <path d="M44 62 L58 76 L86 48" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg><figcaption>Security</figcaption></figure>
+
+<figure data-name="doorbell"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="38" y="6" width="52" height="116" rx="20" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <circle cx="64" cy="34" r="12" fill="#05070A"/>
+    <circle cx="64" cy="34" r="8" fill="url(#lens)"/>
+    <circle cx="61" cy="31" r="2" fill="#fff" opacity="0.7"/>
+    <circle cx="64" cy="88" r="17" fill="#0B0D10"/>
+    <circle cx="64" cy="88" r="17" fill="none" stroke="#3FB8FF" stroke-width="3"/>
+    <circle cx="64" cy="88" r="11" fill="url(#metal)"/>
+  </g>
+</svg><figcaption>Doorbell</figcaption></figure>
+
+<!-- ===================== ROOMS ===================== -->
+<figure data-name="home"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M18 58 V116 H110 V58 L64 22 Z" fill="url(#white)"/>
+    <path d="M6 62 L64 14 L122 62" stroke="#C8281C" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="52" y="78" width="24" height="38" rx="2" fill="#9C6638"/>
+    <rect x="28" y="70" width="18" height="16" rx="2" fill="#FFD873"/><rect x="82" y="70" width="18" height="16" rx="2" fill="#FFD873"/>
+    <rect x="86" y="24" width="10" height="20" fill="#8E959F"/>
+  </g>
+</svg><figcaption>Home</figcaption></figure>
+
+<figure data-name="sofa"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="sofaF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9AA3B0"/><stop offset="1" stop-color="#5C6574"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <rect x="18" y="34" width="92" height="42" rx="12" fill="url(#sofaF)"/>
+    <rect x="8" y="58" width="112" height="34" rx="10" fill="url(#sofaF)"/>
+    <rect x="22" y="60" width="40" height="18" rx="6" fill="#B3BBC6"/><rect x="66" y="60" width="40" height="18" rx="6" fill="#B3BBC6"/>
+    <rect x="4" y="52" width="18" height="44" rx="9" fill="#7B8492"/><rect x="106" y="52" width="18" height="44" rx="9" fill="#7B8492"/>
+    <rect x="14" y="94" width="8" height="12" rx="2" fill="#3A2A1C"/><rect x="106" y="94" width="8" height="12" rx="2" fill="#3A2A1C"/>
+  </g>
+</svg><figcaption>Lounge</figcaption></figure>
+
+<figure data-name="bed"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="duvet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7CC8FF"/><stop offset="1" stop-color="#2E7FD8"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <rect x="8" y="30" width="18" height="80" rx="4" fill="url(#doorWood)"/>
+    <rect x="22" y="62" width="100" height="34" rx="6" fill="#F3F4F6"/>
+    <rect x="28" y="50" width="30" height="16" rx="7" fill="url(#white)"/>
+    <path d="M62 60 H118 Q124 60 124 66 V96 H62 Z" fill="url(#duvet)"/>
+    <rect x="22" y="96" width="102" height="10" rx="3" fill="url(#doorWood)"/>
+    <rect x="114" y="104" width="8" height="12" fill="#5E3A1C"/>
+  </g>
+</svg><figcaption>Bedroom</figcaption></figure>
+
+<figure data-name="kitchen"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="18" y="52" width="92" height="54" rx="10" fill="url(#red)"/>
+    <rect x="18" y="52" width="92" height="12" rx="6" fill="#fff" opacity="0.2"/>
+    <rect x="6" y="60" width="16" height="8" rx="4" fill="#1A1D22"/><rect x="106" y="60" width="16" height="8" rx="4" fill="#1A1D22"/>
+    <ellipse cx="64" cy="50" rx="50" ry="8" fill="url(#silver)"/>
+    <rect x="56" y="34" width="16" height="8" rx="4" fill="#1A1D22"/>
+  </g>
+  <path d="M44 28 q5 -7 0 -14 M64 24 q5 -7 0 -14 M84 28 q5 -7 0 -14" stroke="#E6E9EE" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+</svg><figcaption>Kitchen</figcaption></figure>
+
+<figure data-name="pool"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7FE0FF"/><stop offset="1" stop-color="#1B8FD8"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <rect x="6" y="40" width="116" height="78" rx="10" fill="#E9ECF0"/>
+    <rect x="14" y="48" width="100" height="62" rx="6" fill="url(#water)"/>
+    <path d="M22 70 q8 -6 16 0 t16 0 t16 0 t16 0 t16 0" stroke="#fff" stroke-opacity="0.6" stroke-width="3" fill="none"/>
+    <path d="M22 90 q8 -6 16 0 t16 0 t16 0 t16 0 t16 0" stroke="#fff" stroke-opacity="0.4" stroke-width="3" fill="none"/>
+    <path d="M86 20 V60 M102 20 V60" stroke="#D9DDE2" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M86 20 A8 8 0 0 0 78 28 M102 20 A8 8 0 0 0 94 28" stroke="#D9DDE2" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M86 38 H102 M86 50 H102" stroke="#C9CFD7" stroke-width="4"/>
+  </g>
+</svg><figcaption>Pool</figcaption></figure>
+
+<figure data-name="garden"><svg viewBox="0 0 128 128">
+  <defs><radialGradient id="leaf" cx="0.4" cy="0.3" r="0.8"><stop offset="0" stop-color="#8EE07A"/><stop offset="1" stop-color="#2E8B3E"/></radialGradient></defs>
+  <g filter="url(#sh)">
+    <path d="M64 70 V98" stroke="#5E3A1C" stroke-width="6"/>
+    <circle cx="64" cy="44" r="30" fill="url(#leaf)"/>
+    <circle cx="40" cy="58" r="20" fill="url(#leaf)"/><circle cx="88" cy="58" r="20" fill="url(#leaf)"/>
+    <path d="M40 94 H88 L82 120 H46 Z" fill="#C8693A"/>
+    <rect x="36" y="90" width="56" height="10" rx="3" fill="#D97F4C"/>
+  </g>
+</svg><figcaption>Garden</figcaption></figure>
+
+<figure data-name="bar"><svg viewBox="0 0 128 128">
+  <defs><linearGradient id="wine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B0213A"/><stop offset="1" stop-color="#5E0F1E"/></linearGradient></defs>
+  <g filter="url(#sh)">
+    <path d="M38 10 H90 C92 34 90 58 64 66 C38 58 36 34 38 10 Z" fill="#fff" opacity="0.18" stroke="#E6E9EE" stroke-width="2"/>
+    <path d="M40 34 H88 C86 52 80 60 64 64 C48 60 42 52 40 34 Z" fill="url(#wine)"/>
+    <path d="M64 66 V106" stroke="#E6E9EE" stroke-width="4" opacity="0.8"/>
+    <ellipse cx="64" cy="110" rx="24" ry="6" fill="#E6E9EE" opacity="0.8"/>
+    <path d="M46 16 C44 30 46 42 52 50" stroke="#fff" stroke-opacity="0.6" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg><figcaption>Bar</figcaption></figure>
+
+<figure data-name="gym"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="30" y="58" width="68" height="12" rx="4" fill="url(#silver)"/>
+    <rect x="14" y="34" width="18" height="60" rx="5" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="96" y="34" width="18" height="60" rx="5" fill="url(#blackBody)" stroke="url(#rim)" stroke-width="2"/>
+    <rect x="4" y="44" width="12" height="40" rx="4" fill="#2A2F36"/><rect x="112" y="44" width="12" height="40" rx="4" fill="#2A2F36"/>
+  </g>
+</svg><figcaption>Gym</figcaption></figure>
+
+<figure data-name="coffee"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <ellipse cx="60" cy="110" rx="46" ry="8" fill="url(#white)"/>
+    <path d="M22 44 H98 V78 A30 30 0 0 1 68 108 H52 A30 30 0 0 1 22 78 Z" fill="url(#white)"/>
+    <path d="M98 54 H106 A14 14 0 0 1 106 82 H96" stroke="#D9DDE2" stroke-width="8" fill="none"/>
+    <ellipse cx="60" cy="44" rx="38" ry="8" fill="#6B4425"/>
+    <ellipse cx="60" cy="44" rx="38" ry="8" fill="none" stroke="#E9ECF0" stroke-width="3"/>
+  </g>
+  <path d="M46 34 q5 -8 0 -16 M62 30 q5 -8 0 -16 M78 34 q5 -8 0 -16" stroke="#E6E9EE" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+</svg><figcaption>Coffee</figcaption></figure>
+
+<figure data-name="plug"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <rect x="22" y="22" width="84" height="84" rx="18" fill="url(#white)"/>
+    <circle cx="64" cy="64" r="28" fill="#E3E7EC" stroke="#C5CBD3" stroke-width="2"/>
+    <circle cx="52" cy="64" r="5" fill="#2A2F36"/><circle cx="76" cy="64" r="5" fill="#2A2F36"/>
+    <circle cx="94" cy="34" r="3" fill="#4CC38A"/>
+  </g>
+</svg><figcaption>Smart plug</figcaption></figure>
+
+<figure data-name="energy"><svg viewBox="0 0 128 128">
+  <g filter="url(#sh)">
+    <path d="M72 6 L22 72 H58 L50 122 L106 50 H68 Z" fill="url(#gold)" stroke="#B87314" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M72 6 L58 44 H68 Z" fill="#fff" opacity="0.4"/>
+  </g>
+</svg><figcaption>Energy</figcaption></figure>
+
+</main>
