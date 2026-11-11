@@ -15,16 +15,7 @@ class HomeScreen(host: Host) : Screen(host) {
     private val device get() = host.project?.device ?: DeviceSettings()
     private val iconsOnly get() = device.homeStyle == "icons"
 
-    /** The icon for a home spot: the installer's pick, else the realistic set's one (if that set is on). */
-    private fun iconFor(key: String): String? =
-        device.icons[key] ?: if (device.iconSet == "realistic") REALISTIC[key]?.let { "icon:$it" } else null
-
-    private companion object {
-        val REALISTIC = mapOf(
-            "watch" to "real_tv", "listen" to "real_speaker", "lights" to "real_bulb", "comfort" to "real_aircon",
-            "shades" to "real_blinds", "favourites" to "real_star", "room_off" to "real_power",
-        )
-    }
+    private fun iconFor(key: String): String? = homeIconValue(device, key)
 
     override fun build(): View {
         val room = host.room ?: return page(empty("No rooms programmed yet.\nAdd rooms in Home Assistant → AR Remote → Configure."))
@@ -111,9 +102,19 @@ class HomeScreen(host: Host) : Screen(host) {
         val rows = (specs.size + columns - 1) / columns
         val dm = ctx.resources.displayMetrics
         val screenDp = dm.heightPixels / dm.density
+        // Room Off only when something is on: an activity, a light, the aircon, or
+        // a TV / amp someone switched on another way. With everything off there is
+        // nothing to turn off, so the button isn't shown (the power key still works).
+        val somethingOn = active != null ||
+            room.lights.any { live.isOn(it.entity) } ||
+            (room.climate?.let { live.get(it.entity) != null && live.state(it.entity) != "off" && live.isOn(it.entity) } ?: false) ||
+            // "idle" doesn't count: many players (Sonos, Chromecast) sit idle when off.
+            room.activities.any { a ->
+                listOfNotNull(a.source, a.volume).any { live.state(it) in setOf("on", "playing", "paused", "buffering") }
+            }
         val used = 18 + 16 + 52 + 14 + // page padding + header + gap
             (if (active != null) 76 + 14 else 0) + // now-playing strip
-            14 + 64 + 8 // gap + Room Off + slack so it never scrolls
+            (if (somethingOn) 14 + 64 else 0) + 8 // gap + Room Off + slack so it never scrolls
         val rowDp = if (rows == 0) 150 else ((screenDp - used - 14 * (rows - 1)) / rows).toInt().coerceIn(132, 230)
         // Room for the label and the status line under the icon.
         bubbleDp = (rowDp - 64).coerceIn(68, if (columns == 2) 120 else 100)
@@ -136,7 +137,7 @@ class HomeScreen(host: Host) : Screen(host) {
             contentDescription = "Room Off"
             clickable { host.askRoomOff() }
         }
-        parts += off
+        if (somethingOn) parts += off
         return page(*parts.toTypedArray(), scroll = true)
     }
 
@@ -154,7 +155,12 @@ class HomeScreen(host: Host) : Screen(host) {
     private fun countText(n: Int, word: String) = if (n == 1) "1 $word" else "$n ${word}s"
 
     private fun openKind(list: List<Activity>, kind: String) {
-        if (list.size == 1) {
+        // Already watching / listening: straight back to its screen. Nothing is sent,
+        // so nothing can re-run; another source is picked from there ("Switch").
+        val running = host.activeActivity()
+        if (running != null && running.kind == kind) {
+            host.show(ActivityScreen(host, running.id))
+        } else if (list.size == 1) {
             host.startRoomActivity(list[0])
         } else {
             host.show(SourcesScreen(host, kind))

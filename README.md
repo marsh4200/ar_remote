@@ -74,6 +74,20 @@ expects: `apple_tv`, `android_tv`, `roku`, `samsung_tv`, `lg_webos`,
 `ir_generic` (Broadlink / IR learned codes named `up`, `down`, `ok`, `back` …).
 Transport keys fall back to the source media player when the set has no command.
 
+## Changes in 2.9.4
+
+- **New Watch screen.** Picture area (artwork with the title when the source reports it, else the activity's icon
+  or logo), a Playing / Paused / On badge, big round transport keys, one volume pill (minus, level, plus, mute),
+  shortcuts to Lights, Comfort and Switch source that come back to Watch, labelled colour keys and a one-line
+  note of which device the hard keys drive. The D-pad, OK, Back, transport and volume keys work as before.
+- **Watch on the room home while already watching** goes straight to the running activity's screen — nothing is
+  sent, so nothing re-runs. Another source from *Switch* only changes sources.
+
+## Changes in 2.9.3
+
+- **Room Off only when something is on.** The room home hides the Room Off button when no activity runs, no light
+  is on, the aircon is off and no TV / amp of the room is on. The power key still turns the room off.
+
 ## Changes in 2.9.2
 
 - **Realistic icons (C4-style).** 56 full-colour icons built into the remote: TV, projector, projector screen,

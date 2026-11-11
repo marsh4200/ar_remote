@@ -106,13 +106,15 @@ class RoomsScreen(host: Host) : Screen(host) {
 }
 
 /** Scenes + every load. UP/DOWN picks a load, LEFT/RIGHT dims, OK toggles. */
-class LightsScreen(host: Host) : Screen(host) {
+class LightsScreen(host: Host, private val from: (() -> Screen)? = null) : Screen(host) {
     override val name = "lights"
-    override val parent: (() -> Screen) = { HomeScreen(host) }
+    override val parent: (() -> Screen) = from ?: { HomeScreen(host) }
 
     override fun build(): View {
         val room = host.room ?: return page(empty("No room"))
-        val parts = mutableListOf<View>(header(room.name, "Lights"))
+        // Opened from a Watch screen: back returns there, not to the room home.
+        val back: () -> Unit = if (from != null) ({ host.show(from.invoke()) }) else ({ host.home() })
+        val parts = mutableListOf<View>(header(room.name, "Lights", back))
         if (room.scenes.isNotEmpty()) {
             parts += ctx.section("Scenes")
             parts += grid(room.scenes.map { s ->
@@ -191,9 +193,9 @@ class LightsScreen(host: Host) : Screen(host) {
 }
 
 /** One climate entity: big temperature, setpoint, modes. */
-class ComfortScreen(host: Host) : Screen(host) {
+class ComfortScreen(host: Host, private val from: (() -> Screen)? = null) : Screen(host) {
     override val name = "comfort"
-    override val parent: (() -> Screen) = { HomeScreen(host) }
+    override val parent: (() -> Screen) = from ?: { HomeScreen(host) }
 
     override fun build(): View {
         val room = host.room ?: return page(empty("No room"))
@@ -228,7 +230,8 @@ class ComfortScreen(host: Host) : Screen(host) {
                 host.send("climate", "entity" to climate.entity, "action" to "mode", "value" to m)
             }.apply { tag = "mode-$m" }
         }
-        return page(header(room.name, "Comfort"), big, setRow, ctx.section("Mode"), grid(chips, 3, 8), scroll = true)
+        val back: () -> Unit = if (from != null) ({ host.show(from.invoke()) }) else ({ host.home() })
+        return page(header(room.name, "Comfort", back), big, setRow, ctx.section("Mode"), grid(chips, 3, 8), scroll = true)
     }
 }
 

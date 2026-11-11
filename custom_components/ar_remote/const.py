@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "ar_remote"
 NAME = "AR Remote"
-VERSION = "2.9.2"
+VERSION = "2.9.4"
 
 CONF_HOST = "host"
 CONF_PORT = "port"

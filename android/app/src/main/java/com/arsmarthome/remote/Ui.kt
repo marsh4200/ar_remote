@@ -200,3 +200,12 @@ fun Context.libraryIcon(value: String?): Int {
 
 /** A realistic library icon: drawn in its own colours, never tinted. */
 fun isRealIcon(value: String?): Boolean = value?.startsWith("icon:real_") == true
+
+private val REALISTIC_HOME = mapOf(
+    "watch" to "real_tv", "listen" to "real_speaker", "lights" to "real_bulb", "comfort" to "real_aircon",
+    "shades" to "real_blinds", "favourites" to "real_star", "room_off" to "real_power",
+)
+
+/** The icon for a home spot: the installer's pick, else the realistic set's one (when that set is on). */
+fun homeIconValue(device: DeviceSettings, key: String): String? =
+    device.icons[key] ?: if (device.iconSet == "realistic") REALISTIC_HOME[key]?.let { "icon:$it" } else null
