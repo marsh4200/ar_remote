@@ -79,6 +79,13 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         @SuppressLint("HardwareIds")
         val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "astrion"
         link = HaLink(store, androidId)
+        link.onResult = { ok, type -> onLinkResult(ok, type) }
+        try {
+            (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager)
+                .registerDefaultNetworkCallback(netCallback)
+        } catch (e: Exception) {
+            Log.w(HaLink.TAG, "network watch: ${e.message}")
+        }
         project = store.loadProject()
         roomId = store.roomId
 
@@ -109,9 +116,72 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
+        retryDelay = RETRY_FIRST_MS
         applyBrightness()
         dismissLockScreen()
         hello()
+    }
+
+    override fun onPause() {
+        resumed = false
+        retryPending = false
+        main.removeCallbacks(retryHello)
+        super.onPause()
+    }
+
+    // ------------------------------------------------- staying linked to HA
+
+    private var resumed = false
+    private var linkWasOk = false
+    private var retryPending = false
+    private var retryDelay = RETRY_FIRST_MS
+
+    /** Home Assistant did not answer: keep trying while the screen is on. */
+    private val retryHello = Runnable {
+        retryPending = false
+        if (resumed && !link.lastOk) hello()
+    }
+
+    /**
+     * After every message. One failed hello used to leave the remote "not
+     * connected" until the next press (HA still starting after a power cut,
+     * Wi-Fi not back yet when the screen woke) — now it retries: 3 s, 6 s, …
+     * up to every 30 s, and at once when the network comes back.
+     */
+    private fun onLinkResult(ok: Boolean, type: String) {
+        val changed = ok != linkWasOk
+        linkWasOk = ok
+        if (ok) {
+            retryDelay = RETRY_FIRST_MS
+            retryPending = false
+            main.removeCallbacks(retryHello)
+            // Back through a key press, not a hello: fetch what we missed.
+            if (changed && type != "hello") hello()
+        } else if (resumed && !retryPending) {
+            retryPending = true
+            main.postDelayed(retryHello, retryDelay)
+            if (type == "hello") retryDelay = (retryDelay * 2).coerceAtMost(RETRY_MAX_MS)
+        }
+        if (changed) refresh() // the settings panel shows the link's status
+    }
+
+    private val netCallback = object : android.net.ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) {
+            main.post {
+                if (!resumed || link.lastOk) return@post
+                retryDelay = RETRY_FIRST_MS
+                hello()
+            }
+        }
+    }
+
+    /** "192.168.1.10:8123" — where the remote sends its presses (shown in settings). */
+    fun haHost(): String = try {
+        val u = java.net.URL(store.webhookUrl)
+        if (u.port > 0) "${u.host}:${u.port}" else u.host
+    } catch (e: Exception) {
+        ""
     }
 
     /** Skip Android's swipe-to-unlock when there's no PIN (we are the remote's UI). */
@@ -149,6 +219,11 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         try { unregisterReceiver(powerReceiver) } catch (_: Exception) {}
         waker.stop()
         main.removeCallbacks(idleWatch)
+        main.removeCallbacks(retryHello)
+        try {
+            (getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager)
+                .unregisterNetworkCallback(netCallback)
+        } catch (_: Exception) {}
         updater.unregister()
         server.stop()
         super.onDestroy()
@@ -1073,5 +1148,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         const val REQ_LOCATION = 41
         const val APK_URL = "https://github.com/marsh4200/ar_remote/releases/latest/download/ar-remote.apk"
         const val LONG_PRESS_MS = 800L
+        const val RETRY_FIRST_MS = 3000L
+        const val RETRY_MAX_MS = 30000L
     }
 }

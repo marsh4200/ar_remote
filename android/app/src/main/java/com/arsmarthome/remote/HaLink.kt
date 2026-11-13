@@ -17,12 +17,20 @@ class HaLink(private val store: Store, private val remoteId: String) {
     var lastOk = false
         private set
 
+    /** Called on the main thread after every message: did it get through, and its type. */
+    var onResult: ((ok: Boolean, type: String) -> Unit)? = null
+
     fun send(message: JSONObject, onReply: ((JSONObject) -> Unit)? = null) {
         val url = store.webhookUrl ?: return
         message.put("remote", remoteId)
         worker.execute {
             val reply = post(url, message)
-            if (reply != null && onReply != null) main.post { onReply(reply) }
+            val ok = lastOk
+            val type = message.optString("type")
+            main.post {
+                if (reply != null && onReply != null) onReply(reply)
+                onResult?.invoke(ok, type)
+            }
         }
     }
 

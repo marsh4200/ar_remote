@@ -116,7 +116,12 @@ class SettingsScreen(host: Host, back: Screen?) : PanelScreen(host, back) {
         val ok = a.haConnected()
         parts += row(
             R.drawable.ic_home, "Home Assistant",
-            if (ok) "Connected" else "Not connected — check Wi-Fi",
+            when {
+                ok -> "Connected"
+                ssid == null -> "Not connected — check Wi-Fi"
+                // Wi-Fi is fine: it's Home Assistant (off, restarting, or on a new address).
+                else -> "No answer from ${a.haHost().ifEmpty { "Home Assistant" }} — retrying"
+            },
             if (ok) Palette.green else Palette.danger, onClick = null,
         )
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import timedelta
+from ipaddress import ip_address
 import logging
 import time
 from typing import Any
@@ -24,6 +25,7 @@ from homeassistant.helpers.script import Script, async_validate_actions_config
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
+from yarl import URL
 
 from .api import RemoteClient, RemoteError
 from .const import (
@@ -132,6 +134,8 @@ class ArRemoteRuntime:
         self.last_room_off: dict[str, dict] = {}
         # Per room: the last custom / colour button press and what came of it.
         self.last_button: dict[str, dict] = {}
+        # When we last checked whether the remote moved to another address.
+        self._moved_check = 0.0
 
     # ------------------------------------------------------------------ setup
 
@@ -147,6 +151,17 @@ class ArRemoteRuntime:
         try:
             base = get_url(self.hass, allow_external=False, allow_cloud=False, prefer_external=False)
         except NoURLAvailableError:
+            return None
+        # Home Assistant that started before the network was up (after a power
+        # cut it often boots faster than the router) reports an address nothing
+        # can reach. Never hand that to the remote: it would replace a link
+        # that works with one that can't.
+        try:
+            ip = ip_address(URL(base).host or "")
+        except ValueError:
+            ip = None  # a host name
+        if ip is not None and (ip.is_unspecified or ip.is_loopback or ip.is_link_local):
+            _LOGGER.debug("AR Remote: not linking to unusable address %s", base)
             return None
         self.base_url = base
         return f"{base}{webhook.async_generate_path(self.webhook_id)}"
@@ -353,12 +368,61 @@ class ArRemoteRuntime:
             return web.json_response({"ok": False, "error": "bad json"}, status=400)
         if not isinstance(msg, dict):
             return web.json_response({"ok": False, "error": "expected a JSON object"}, status=400)
+        self._note_sender(request.remote)
         try:
             reply = await self.handle_message(msg)
         except Exception as err:  # noqa: BLE001 - never 500 back to the remote
             _LOGGER.exception("AR Remote message failed: %s", msg)
             return web.json_response({"ok": False, "error": str(err)})
         return web.json_response({"ok": True, **(reply or {})})
+
+    @callback
+    def _note_sender(self, addr: str | None) -> None:
+        """The remote talks to us from another address than the one we have.
+
+        After a router restart the remote can come back on a new IP: its
+        presses still arrive, but nothing we send (state, projects) reaches it.
+        Check that address, at most once a minute, and move over to it.
+        """
+        if not addr or addr == self.client.host:
+            return
+        try:
+            if ip_address(addr).is_loopback:
+                return
+            ip_address(self.client.host)  # set up by name: leave it to DNS
+        except ValueError:
+            return
+        now = time.monotonic()
+        if now - self._moved_check < 60:
+            return
+        self._moved_check = now
+        self.hass.async_create_task(self._follow(addr), "ar_remote address check")
+
+    async def _follow(self, addr: str) -> None:
+        try:
+            await self.client.info()
+            return  # the address we have still answers
+        except RemoteError:
+            pass
+        probe = RemoteClient(async_get_clientsession(self.hass), addr, self.client.port)
+        try:
+            info = await probe.info()
+        except RemoteError:
+            return  # not the remote itself (a proxy, another machine)
+        if info.get("app") != "ar_remote" or self.webhook_id not in str(info.get("webhook_url") or ""):
+            return
+        for other in self.hass.config_entries.async_entries(DOMAIN):
+            if other.entry_id != self.entry.entry_id and other.data.get(CONF_HOST) == addr:
+                return
+        old = self.client.host
+        _LOGGER.warning("AR Remote moved from %s to %s; following it", old, addr)
+        # Saving reloads the entry (new client) and programs the remote.
+        self.hass.config_entries.async_update_entry(
+            self.entry,
+            data={**self.entry.data, CONF_HOST: addr},
+            title=self.entry.title.replace(old, addr),
+            unique_id=addr,
+        )
 
     async def handle_message(self, msg: dict) -> dict | None:
         kind = msg.get("type")
