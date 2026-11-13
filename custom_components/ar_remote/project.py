@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 
-from .const import HOME_ICONS, HOME_STYLES, ICON_SETS, IR_KEYS, KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
+from .const import BACKGROUNDS, HOME_ICONS, HOME_STYLES, ICON_SETS, IR_KEYS, LOOKS, KEY_MODES, MEDIA_KEYS, SLOTS_COLOR, SLOTS_CUSTOM
 
 
 def _name(hass: HomeAssistant, entity_id: str) -> str:
@@ -271,6 +271,8 @@ def compile_device(hass: HomeAssistant, dev: dict) -> dict:
         "clock_y": _pct(dev.get("clock_y")),
         "home_style": dev.get("home_style") if dev.get("home_style") in HOME_STYLES else "round",
         "icon_set": dev.get("icon_set") if dev.get("icon_set") in ICON_SETS else "realistic",
+        "look": dev.get("look") if dev.get("look") in LOOKS else "classic",
+        "background": dev.get("background") if dev.get("background") in BACKGROUNDS else "lounge",
         "icons": {
             cat: _versioned(url, dev.get("icons_rev"))
             for cat, url in (dev.get("icons") or {}).items()

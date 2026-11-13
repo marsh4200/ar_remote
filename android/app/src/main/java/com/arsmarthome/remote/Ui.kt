@@ -17,18 +17,68 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Palette from the approved preview. */
+/**
+ * The app's colours. Two looks, chosen in Home Assistant (Home screen icons → Look):
+ * Classic (flat dark, amber) and Residence (a photo behind glass cards, champagne).
+ * Screens read these while they are built, so [use] followed by a redraw switches look.
+ */
 object Palette {
-    val ground = Color.parseColor("#0E1116")
-    val surface = Color.parseColor("#171B22")
-    val raised = Color.parseColor("#1B2029")
-    val track = Color.parseColor("#2A313C")
-    val text = Color.parseColor("#F3F4F6")
-    val soft = Color.parseColor("#C9CED6")
-    val muted = Color.parseColor("#9AA3AF")
-    val accent = Color.parseColor("#F2A541")
-    val danger = Color.parseColor("#F9A487")
-    val dangerBg = Color.parseColor("#1A1412")
+    var ground = Color.parseColor("#0E1116")
+        private set
+    var surface = Color.parseColor("#171B22")
+        private set
+    var raised = Color.parseColor("#1B2029")
+        private set
+    var track = Color.parseColor("#2A313C")
+        private set
+    var text = Color.parseColor("#F3F4F6")
+        private set
+    var soft = Color.parseColor("#C9CED6")
+        private set
+    var muted = Color.parseColor("#9AA3AF")
+        private set
+    var accent = Color.parseColor("#F2A541")
+        private set
+    var danger = Color.parseColor("#F9A487")
+        private set
+    var dangerBg = Color.parseColor("#1A1412")
+        private set
+    /** A sunken strip (the volume pill): the page colour in Classic, dark glass in Residence. */
+    var well = Color.parseColor("#0E1116")
+        private set
+    /** True in the Residence look. */
+    var residence = false
+        private set
+
+    fun use(residence: Boolean) {
+        this.residence = residence
+        if (residence) {
+            ground = Color.parseColor("#121013")
+            surface = Color.parseColor("#8C161418") // glass: see-through, the photo shows behind
+            raised = Color.parseColor("#99161418")
+            track = Color.parseColor("#33FFFFFF")
+            text = Color.parseColor("#F1EDE6")
+            soft = Color.parseColor("#D6CFC4")
+            muted = Color.parseColor("#B8B0A4")
+            accent = Color.parseColor("#F3D39A")
+            danger = Color.parseColor("#F9A487")
+            dangerBg = Color.parseColor("#99281210")
+            well = Color.parseColor("#66000000")
+        } else {
+            ground = Color.parseColor("#0E1116")
+            surface = Color.parseColor("#171B22")
+            raised = Color.parseColor("#1B2029")
+            track = Color.parseColor("#2A313C")
+            text = Color.parseColor("#F3F4F6")
+            soft = Color.parseColor("#C9CED6")
+            muted = Color.parseColor("#9AA3AF")
+            accent = Color.parseColor("#F2A541")
+            danger = Color.parseColor("#F9A487")
+            dangerBg = Color.parseColor("#1A1412")
+            well = Color.parseColor("#0E1116")
+        }
+    }
+
     val red = Color.parseColor("#E5484D")
     val green = Color.parseColor("#46A758")
     val blue = Color.parseColor("#3E8EF7")
@@ -64,7 +114,14 @@ fun Context.label(
     this.text = text
     setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
     setTextColor(color)
-    typeface = Typeface.create("sans-serif-medium".takeIf { bold } ?: "sans-serif", if (bold) Typeface.BOLD else Typeface.NORMAL)
+    typeface = when {
+        !Palette.residence ->
+            Typeface.create("sans-serif-medium".takeIf { bold } ?: "sans-serif", if (bold) Typeface.BOLD else Typeface.NORMAL)
+        // Residence: big titles go light, small headings medium, nothing heavy.
+        bold && sizeSp >= 20f -> Typeface.create("sans-serif-light", Typeface.NORMAL)
+        bold -> Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        else -> Typeface.create("sans-serif", Typeface.NORMAL)
+    }
     if (caps) {
         setAllCaps(true)
         letterSpacing = 0.08f
@@ -156,7 +213,12 @@ fun Context.keyButton(text: String, active: Boolean = false, onClick: () -> Unit
     }
 
 /** The lit round "bubble" behind a home icon (C4-style). Amber ring when [active]. */
-fun Context.bubble(active: Boolean, sizeDp: Int): Drawable = GradientDrawable().apply {
+fun Context.bubble(active: Boolean, sizeDp: Int): Drawable = if (Palette.residence) GradientDrawable().apply {
+    // Residence: a glass ring, champagne when active.
+    shape = GradientDrawable.OVAL
+    setColor(if (active) tinted(Palette.accent, 0x29) else Color.parseColor("#6B141216"))
+    setStroke(dp(1), if (active) tinted(Palette.accent, 0xD9) else Color.parseColor("#47FFFFFF"))
+} else GradientDrawable().apply {
     shape = GradientDrawable.OVAL
     gradientType = GradientDrawable.RADIAL_GRADIENT
     gradientRadius = dp(sizeDp) * 0.75f
@@ -167,6 +229,17 @@ fun Context.bubble(active: Boolean, sizeDp: Int): Drawable = GradientDrawable().
         intArrayOf(Color.parseColor("#2C333E"), Color.parseColor("#1B2029"), Color.parseColor("#12161C"))
     }
     if (active) setStroke(dp(2), Palette.accent) else setStroke(dp(1), Color.parseColor("#262C36"))
+}
+
+/** [color] at [alpha] 0..255. */
+fun tinted(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
+
+/** Residence, icons only: the soft light behind an icon that is on. No edge, it fades out. */
+fun Context.glow(sizeDp: Int): Drawable = GradientDrawable().apply {
+    shape = GradientDrawable.OVAL
+    gradientType = GradientDrawable.RADIAL_GRADIENT
+    gradientRadius = dp(sizeDp) / 2f
+    colors = intArrayOf(tinted(Palette.accent, 0x55), tinted(Palette.accent, 0x00))
 }
 
 /**
@@ -189,23 +262,34 @@ fun Context.homeGlyph(custom: android.graphics.Bitmap?, res: Int, active: Boolea
 
 /**
  * A built-in library icon, or 0 when [value] isn't one:
- * "icon:real_tv" → drawable real_tv (realistic, full colour), "icon:tv" → drawable lib_tv (line).
+ * "icon:real_tv" → drawable real_tv (realistic, full colour), "icon:tv" → drawable lib_tv (line),
+ * "icon:look_tv" → drawable look_tv (the Residence look's own icons).
  */
 fun Context.libraryIcon(value: String?): Int {
     if (value == null || !value.startsWith("icon:")) return 0
     val name = value.removePrefix("icon:").filter { it.isLetterOrDigit() || it == '_' }
     if (name.isEmpty()) return 0
-    return resources.getIdentifier(if (name.startsWith("real_")) name else "lib_$name", "drawable", packageName)
+    val full = name.startsWith("real_") || name.startsWith("look_")
+    return resources.getIdentifier(if (full) name else "lib_$name", "drawable", packageName)
 }
 
 /** A realistic library icon: drawn in its own colours, never tinted. */
-fun isRealIcon(value: String?): Boolean = value?.startsWith("icon:real_") == true
+fun isRealIcon(value: String?): Boolean =
+    value != null && (value.startsWith("icon:real_") || value.startsWith("icon:look_"))
 
 private val REALISTIC_HOME = mapOf(
     "watch" to "real_tv", "listen" to "real_speaker", "lights" to "real_bulb", "comfort" to "real_aircon",
     "shades" to "real_blinds", "favourites" to "real_star", "room_off" to "real_power",
 )
 
+/** The Residence look's icons (glowing bulb, glass TV …); Room Off keeps the red power button. */
+private val RESIDENCE_HOME = mapOf(
+    "watch" to "look_tv", "listen" to "look_speaker", "lights" to "look_bulb", "comfort" to "look_aircon",
+    "shades" to "look_blinds", "favourites" to "look_sparkle", "room_off" to "real_power",
+)
+
 /** The icon for a home spot: the installer's pick, else the realistic set's one (when that set is on). */
 fun homeIconValue(device: DeviceSettings, key: String): String? =
-    device.icons[key] ?: if (device.iconSet == "realistic") REALISTIC_HOME[key]?.let { "icon:$it" } else null
+    device.icons[key] ?: if (device.iconSet == "realistic") {
+        (if (device.look == "residence") RESIDENCE_HOME else REALISTIC_HOME)[key]?.let { "icon:$it" }
+    } else null

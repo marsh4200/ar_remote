@@ -98,6 +98,10 @@ The project also carries the remote's own settings:
 running Listen activity (or starts / picks one), `transport` is play controls on the source, `action`
 sends the key with `route: device` and HA runs the action set for it (actions stay in HA).
 
+`device` also carries the look: `"look": "classic" | "residence"`, `"background": "lounge"` (a photo
+bundled in the app as `bg_<name>`, or `"none"`; Residence only), `"home_style": "round" | "icons"` and
+`"icon_set": "realistic" | "line"`. An app that doesn't know `look` stays Classic.
+
 `logo` is resolved against the webhook URL's host and cached on the remote.
 `pickup` is `off`, `auto` (low-power sensors only) or `always` (keeps the CPU awake while
 the screen is off). `/info` reports `wake_sensor`, `pickup` and `logo`.

@@ -36,7 +36,7 @@ class HomeScreen(host: Host) : Screen(host) {
         val picker = ctx.row(8).apply {
             addView(ctx.label(room.name, 26f, bold = true).apply { maxLines = 1 })
             addView(ctx.icon(R.drawable.ic_down, Palette.muted, 22))
-            background = ctx.focusBg(Palette.ground, 10)
+            background = ctx.focusBg(Color.TRANSPARENT, 10) // nothing behind it: the page (or photo) shows
             setPadding(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))
             tag = "room-picker"
             contentDescription = "Change room"
@@ -232,11 +232,21 @@ class HomeScreen(host: Host) : Screen(host) {
         if (iconsOnly) {
             // Icon only: bigger glyph, nothing behind it.
             val size = (bubbleDp * 0.72).toInt()
-            col.addView(ctx.homeGlyph(custom, res, spec.active, if (real) (bubbleDp * 0.9).toInt() else size, tint = !real))
+            val glyph = ctx.homeGlyph(custom, res, spec.active, if (real) (bubbleDp * 0.9).toInt() else size, tint = !real)
+            if (Palette.residence) {
+                // Same box for every icon (so the names line up); a soft light behind the ones that are on.
+                val halo = FrameLayout(ctx)
+                if (spec.active) halo.background = ctx.glow(bubbleDp)
+                halo.addView(glyph, FrameLayout.LayoutParams(glyph.layoutParams.width, glyph.layoutParams.height, Gravity.CENTER))
+                col.addView(halo, LinearLayout.LayoutParams(ctx.dp(bubbleDp), ctx.dp(bubbleDp)))
+            } else {
+                col.addView(glyph)
+            }
         } else {
             val bubble = FrameLayout(ctx).apply {
                 background = ctx.bubble(spec.active, bubbleDp)
-                elevation = ctx.dp(6).toFloat()
+                // Glass is see-through: a drop shadow would show inside the ring.
+                if (!Palette.residence) elevation = ctx.dp(6).toFloat()
             }
             val glyph = ctx.homeGlyph(
                 custom, res, spec.active,

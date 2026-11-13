@@ -580,8 +580,10 @@
       },
       "home_icons": {
         "title": "Home screen icons",
-        "description": "The room's home page on the remote: **Round** puts each icon in a lit bubble; **Icons only** shows just the icon and its name.\n\nFor each icon you can pick one from the **built-in library** ({count} icons, realistic and line), upload your own image (its plain background is cut away on the remote), or type an address such as `/local/icons/tv.png`. Your own image wins over a built-in icon; leave all three empty for the standard icon.",
+        "description": "**Look** sets the whole remote: **Classic** is the flat dark look with amber; **Residence** puts a photo behind glass cards, with champagne highlights, lighter lettering and its own TV, speaker, bulb, aircon and blinds icons (the 4C Dash look). **Background** is the photo for Residence.\n\nThe room's home page on the remote: **Round** puts each icon in a lit bubble; **Icons only** shows just the icon and its name.\n\nFor each icon you can pick one from the **built-in library** ({count} icons, realistic and line), upload your own image (its plain background is cut away on the remote), or type an address such as `/local/icons/tv.png`. Your own image wins over a built-in icon; leave all three empty for the standard icon.",
         "data": {
+          "look": "Look",
+          "background": "Background (Residence look)",
           "home_style": "Look of the room's icons",
           "icon_set": "Standard icons",
           "watch_icon": "Watch icon",
@@ -607,6 +609,8 @@
           "room_off": "…or an image address"
         },
         "data_description": {
+          "look": "Works with both Round and Icons only below. In Residence, Round is a glass ring and Icons only adds a soft light behind what is on.",
+          "background": "Only used by the Residence look. The remote darkens it so the icons and names stay readable.",
           "home_style": "Built-in icons take the accent colour when active. Your own images are shown as they are.",
           "icon_set": "Used for every icon you don't pick below. **Realistic**: full-colour TV, speaker, bulb, aircon, blinds, star, red power button. **Line**: white outline icons that turn amber when active."
         }
@@ -698,6 +702,49 @@
       "options": {
         "realistic": "Realistic (full colour)",
         "line": "Line (outline)"
+      }
+    },
+    "look": {
+      "options": {
+        "classic": "Classic (flat dark, amber)",
+        "residence": "Residence (photo, glass, champagne)"
+      }
+    },
+    "background": {
+      "options": {
+        "none": "None (plain dark)",
+        "lounge": "Lounge",
+        "city_night": "City night",
+        "villa": "Villa",
+        "aurora": "Aurora",
+        "cape": "Cape",
+        "dunes": "Dunes",
+        "forest_mist": "Forest mist",
+        "mountains": "Mountains",
+        "stars": "Stars",
+        "sunset_sea": "Sunset sea",
+        "sky_blue": "Sky: Blue",
+        "sky_dawn": "Sky: Dawn",
+        "sky_golden": "Sky: Golden",
+        "sky_high": "Sky: High",
+        "sky_moon": "Sky: Moon",
+        "marble_black": "Marble: Black",
+        "marble_white": "Marble: White",
+        "slate": "Slate",
+        "concrete": "Concrete",
+        "steel": "Steel",
+        "leather": "Leather",
+        "linen": "Linen",
+        "oak": "Oak",
+        "walnut": "Walnut",
+        "colour_amber": "Colour: Amber",
+        "colour_bordeaux": "Colour: Bordeaux",
+        "colour_champagne": "Colour: Champagne",
+        "colour_emerald": "Colour: Emerald",
+        "colour_graphite": "Colour: Graphite",
+        "colour_lagoon": "Colour: Lagoon",
+        "colour_midnight": "Colour: Midnight",
+        "colour_twilight": "Colour: Twilight"
       }
     }
   },

@@ -59,6 +59,8 @@ from .const import (
     HOME_ICONS,
     HOME_STYLES,
     ICON_SETS,
+    LOOKS,
+    BACKGROUNDS,
     PRESS_DOMAINS,
     SWITCH_MODES,
     SLOTS_COLOR,
@@ -966,6 +968,8 @@ class ArRemoteComposer(OptionsFlow):
         if user_input is not None:
             dev["home_style"] = user_input.get("home_style") if user_input.get("home_style") in HOME_STYLES else "round"
             dev["icon_set"] = user_input.get("icon_set") if user_input.get("icon_set") in ICON_SETS else "realistic"
+            dev["look"] = user_input.get("look") if user_input.get("look") in LOOKS else "classic"
+            dev["background"] = user_input.get("background") if user_input.get("background") in BACKGROUNDS else "lounge"
             new: dict[str, str] = {}
             for cat in HOME_ICONS:
                 if user_input.get(f"{cat}_upload"):
@@ -984,6 +988,12 @@ class ArRemoteComposer(OptionsFlow):
             dev["icons_rev"] = int(time.time()) if uploads else None  # re-download on every Submit
             return await self.async_step_init()
         fields: dict = {
+            vol.Required("look", default=dev.get("look") if dev.get("look") in LOOKS else "classic"): _select(
+                LOOKS, dropdown=False, key="look"
+            ),
+            vol.Required("background", default=dev.get("background") if dev.get("background") in BACKGROUNDS else "lounge"): _select(
+                BACKGROUNDS, key="background"
+            ),
             vol.Required("home_style", default=dev.get("home_style") if dev.get("home_style") in HOME_STYLES else "round"): _select(
                 HOME_STYLES, dropdown=False, key="home_style"
             ),

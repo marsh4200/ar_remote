@@ -33,6 +33,18 @@ KINDS = ["watch", "listen"]
 HOME_STYLES = ["round", "icons"]
 # The icons used when the installer hasn't picked one: realistic (full colour) or line.
 ICON_SETS = ["realistic", "line"]
+# The remote's look: classic (flat dark, amber) or residence (a photo behind glass, champagne).
+LOOKS = ["classic", "residence"]
+# Residence: the photo behind every screen. Each is android/.../drawable-nodpi/bg_<name>.jpg in the app.
+BACKGROUNDS = [
+    "none",
+    "lounge", "city_night", "villa", "aurora", "cape", "dunes",
+    "forest_mist", "mountains", "stars", "sunset_sea", "sky_blue", "sky_dawn",
+    "sky_golden", "sky_high", "sky_moon", "marble_black", "marble_white", "slate",
+    "concrete", "steel", "leather", "linen", "oak", "walnut",
+    "colour_amber", "colour_bordeaux", "colour_champagne", "colour_emerald", "colour_graphite", "colour_lagoon",
+    "colour_midnight", "colour_twilight",
+]
 # Home icons the installer can replace with an uploaded image.
 HOME_ICONS = ["watch", "listen", "lights", "comfort", "shades", "favourites", "room_off"]
 # Going from one activity to another of the same kind (Netflix → Apple TV).

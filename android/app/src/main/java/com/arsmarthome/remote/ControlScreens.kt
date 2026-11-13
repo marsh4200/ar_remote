@@ -61,7 +61,7 @@ class SourcesScreen(host: Host, private val kind: String) : Screen(host) {
             if (!iconsOnly) {
                 background = ctx.bubble(on, size)
                 clipToOutline = true
-                elevation = ctx.dp(6).toFloat()
+                if (!Palette.residence) elevation = ctx.dp(6).toFloat()
             }
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }

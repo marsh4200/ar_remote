@@ -86,6 +86,10 @@ data class DeviceSettings(
     val iconSet: String = "realistic",
     /** Home icon (watch, listen, lights, comfort, shades, favourites, room_off) → image address. */
     val icons: Map<String, String> = emptyMap(),
+    /** "classic" (flat dark, amber) or "residence" (photo, glass, champagne). */
+    val look: String = "classic",
+    /** Residence: the photo behind everything (drawable bg_<name>), or "none". */
+    val background: String = "lounge",
 ) {
     companion object {
         fun parse(d: JSONObject?): DeviceSettings {
@@ -110,6 +114,9 @@ data class DeviceSettings(
                 icons = d.optJSONObject("icons")?.let { o ->
                     o.keys().asSequence().associateWith { o.optString(it, "") }.filterValues { it.isNotBlank() }
                 } ?: emptyMap(),
+                look = if (d.optString("look", "classic") == "residence") "residence" else "classic",
+                background = d.optString("background", "lounge")
+                    .filter { it in 'a'..'z' || it in '0'..'9' || it == '_' }.ifEmpty { "none" },
             )
         }
     }

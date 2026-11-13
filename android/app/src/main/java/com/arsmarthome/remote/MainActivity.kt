@@ -668,7 +668,36 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
         }
     }
 
+    /** The look now on screen ("classic", or "residence:<background>"); empty until first applied. */
+    private var lookKey = ""
+
+    /** Classic or Residence, and the photo behind the screens. Screens redraw after this. */
+    private fun applyLook() {
+        val d = project?.device ?: DeviceSettings()
+        val residence = d.look == "residence"
+        val key = if (residence) "residence:${d.background}" else "classic"
+        if (key == lookKey) return
+        lookKey = key
+        Palette.use(residence)
+        val photo = if (residence) backdrop(d.background) else null
+        if (photo != null) root.background = photo else root.setBackgroundColor(Palette.ground)
+    }
+
+    /** The bundled photo bg_<name>, or null ("none", unknown, or no memory for it). */
+    private fun backdrop(name: String): android.graphics.drawable.Drawable? {
+        if (name.isEmpty() || name == "none") return null
+        val id = resources.getIdentifier("bg_$name", "drawable", packageName)
+        if (id == 0) return null
+        return try {
+            android.graphics.BitmapFactory.decodeResource(resources, id)?.let { Backdrop(it) }
+        } catch (e: Throwable) {
+            Log.w(HaLink.TAG, "background $name: ${e.message}")
+            null
+        }
+    }
+
     private fun applyDeviceSettings() {
+        applyLook()
         val s = settings
         waker.configure(s.pickup, s.pickupSensitivity)
         updateKeepOn()

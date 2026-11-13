@@ -115,7 +115,7 @@ class ActivityScreen(host: Host, val activityId: String) : Screen(host) {
         val level = vol?.optInt("v", -1) ?: -1
         val muted = vol?.optBoolean("m", false) ?: false
         val volRow = ctx.row(10).apply {
-            background = ctx.rounded(Palette.ground, 32, Palette.track, 1)
+            background = ctx.rounded(Palette.well, 32, Palette.track, 1)
             setPadding(ctx.dp(8), ctx.dp(8), ctx.dp(8), ctx.dp(8))
         }
         volRow.addView(volKey(R.drawable.ic_minus, "Volume down", false) { host.send("media", "entity" to act.volume, "action" to "volume_down") })
