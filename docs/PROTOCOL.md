@@ -47,7 +47,7 @@ device's Android ID). The reply is JSON.
 | `run`         | `entity` | scene/script/button/automation |
 | `light`       | `entity`, `action` (`toggle`\|`set`), `brightness` 0–100 | light service |
 | `cover`       | `entity`, `action` (`open`\|`close`\|`stop`) | cover service |
-| `climate`     | `entity`, `action` (`temp_up`\|`temp_down`\|`mode`), `value` | climate service |
+| `climate`     | `entity`, `action` (`temp_up`\|`temp_down`\|`mode`\|`fan`\|`swing`\|`swing_h`\|`preset`\|`power`), `value` | climate service; `power` toggles the unit |
 | `media`       | `entity`, `action` (`play_pause`\|`next`\|`previous`\|`volume_up`\|`volume_down`\|`mute`) | media service |
 | `battery`     | `level`, `charging` | battery sensor |
 | `screen`      | `screen`, `room` | attribute only |
@@ -116,7 +116,8 @@ the screen is off). `/info` reports `wake_sensor`, `pickup` and `logo`.
     "light.downlights": {"s": "on", "b": 60},
     "media_player.denon": {"s": "on", "v": 38, "m": false},
     "media_player.lounge_apple_tv": {"s": "playing", "t": "Title", "a": "Artist"},
-    "climate.lounge_ac": {"s": "cool", "c": 24.0, "t": 22.0},
+    "climate.lounge_ac": {"s": "cool", "c": 24.0, "t": 22.0, "modes": ["off", "cool", "heat"],
+                          "fan": "auto", "fans": ["auto", "low", "high"], "swing": "off", "swings": ["off", "vertical"]},
     "cover.lounge": {"s": "open", "p": 100},
     "sensor.lounge_temp": {"s": "23.4"}
   }

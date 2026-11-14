@@ -96,6 +96,15 @@ def _int(value: Any) -> int:
         return 0
 
 
+# Remote's climate action → (service, field, the attribute listing what the unit accepts).
+_CLIMATE_SETTINGS = {
+    "fan": ("set_fan_mode", "fan_mode", "fan_modes"),
+    "swing": ("set_swing_mode", "swing_mode", "swing_modes"),
+    "swing_h": ("set_swing_horizontal_mode", "swing_horizontal_mode", "swing_horizontal_modes"),
+    "preset": ("set_preset_mode", "preset_mode", "preset_modes"),
+}
+
+
 class ArRemoteRuntime:
     """One AR Remote device."""
 
@@ -136,6 +145,8 @@ class ArRemoteRuntime:
         self.last_button: dict[str, dict] = {}
         # When we last checked whether the remote moved to another address.
         self._moved_check = 0.0
+        # Climate → the mode it was in before the remote switched it off.
+        self._climate_mode: dict[str, str] = {}
 
     # ------------------------------------------------------------------ setup
 
@@ -1332,6 +1343,28 @@ class ArRemoteRuntime:
             await self._call("climate", "set_temperature", entity, {"temperature": target})
         elif action == "mode" and msg.get("value"):
             await self._call("climate", "set_hvac_mode", entity, {"hvac_mode": msg["value"]})
+        elif action in _CLIMATE_SETTINGS and msg.get("value"):
+            service, field, choices = _CLIMATE_SETTINGS[action]
+            value = str(msg["value"])
+            if value in [str(o) for o in (state.attributes.get(choices) or [])]:
+                await self._call("climate", service, entity, {field: value})
+        elif action == "power":
+            features = int(state.attributes.get("supported_features") or 0)
+            modes = [str(m) for m in (state.attributes.get("hvac_modes") or [])]
+            if state.state != "off":
+                self._climate_mode[entity] = state.state  # what to come back to
+                if features & 128:  # ClimateEntityFeature.TURN_OFF
+                    await self._call("climate", "turn_off", entity)
+                elif "off" in modes:
+                    await self._call("climate", "set_hvac_mode", entity, {"hvac_mode": "off"})
+            elif features & 256:  # ClimateEntityFeature.TURN_ON
+                await self._call("climate", "turn_on", entity)
+            else:
+                # No "on" of its own: back to the mode it was in, else the first one it has.
+                last = self._climate_mode.get(entity)
+                mode = last if last in modes else next((m for m in modes if m != "off"), None)
+                if mode:
+                    await self._call("climate", "set_hvac_mode", entity, {"hvac_mode": mode})
 
     async def _media(self, entity: str | None, action: str | None) -> None:
         if not entity:

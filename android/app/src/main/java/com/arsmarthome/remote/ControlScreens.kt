@@ -231,7 +231,32 @@ class ComfortScreen(host: Host, private val from: (() -> Screen)? = null) : Scre
             }.apply { tag = "mode-$m" }
         }
         val back: () -> Unit = if (from != null) ({ host.show(from.invoke()) }) else ({ host.home() })
-        return page(header(room.name, "Comfort", back), big, setRow, ctx.section("Mode"), grid(chips, 3, 8), scroll = true)
+
+        // On / off in one press (the unit comes back in the mode it was in).
+        val on = mode != "off" && mode != "unavailable" && mode != "unknown" && mode.isNotEmpty()
+        val power = ctx.keyButton(if (on) "Turn off" else "Turn on", active = on) {
+            host.send("climate", "entity" to climate.entity, "action" to "power")
+        }.apply { tag = "climate-power" }
+
+        val parts = mutableListOf(header(room.name, "Comfort", back), big, setRow, power, ctx.section("Mode"), grid(chips, 3, 8))
+        // Fan speed, swing and preset: each shown only when this unit has it.
+        listOf(
+            Triple("Fan speed", "fan", "fans"),
+            Triple("Swing", "swing", "swings"),
+            Triple("Swing left / right", "swing_h", "swings_h"),
+            Triple("Preset", "preset", "presets"),
+        ).forEach { (title, key, listKey) ->
+            val options = st.optJSONArray(listKey)?.strings()?.filter { it.isNotEmpty() } ?: emptyList()
+            if (options.isEmpty()) return@forEach
+            val current = st.optString(key, "")
+            parts += ctx.section(title)
+            parts += grid(options.map { o ->
+                ctx.pill(o.replace('_', ' ').replaceFirstChar { it.uppercase() }, o == current) {
+                    host.send("climate", "entity" to climate.entity, "action" to key, "value" to o)
+                }.apply { tag = "$key-$o" }
+            }, 3, 8)
+        }
+        return page(*parts.toTypedArray(), scroll = true)
     }
 }
 

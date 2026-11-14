@@ -347,6 +347,18 @@ def compact_state(state: State | None, base_url: str | None = None) -> dict:
         modes = attrs.get("hvac_modes")
         if isinstance(modes, (list, tuple)) and modes:
             out["modes"] = [str(m) for m in modes]
+        # Fan speed, swing (up/down and left/right) and preset: only what this unit has.
+        for now, choices, attr, attr_list in (
+            ("fan", "fans", "fan_mode", "fan_modes"),
+            ("swing", "swings", "swing_mode", "swing_modes"),
+            ("swing_h", "swings_h", "swing_horizontal_mode", "swing_horizontal_modes"),
+            ("preset", "presets", "preset_mode", "preset_modes"),
+        ):
+            options = attrs.get(attr_list)
+            if isinstance(options, (list, tuple)) and options:
+                out[choices] = [str(o) for o in options]
+                if attrs.get(attr) is not None:
+                    out[now] = str(attrs[attr])
     elif domain == "cover":
         pos = _float(attrs.get("current_position"))
         if pos is not None:
