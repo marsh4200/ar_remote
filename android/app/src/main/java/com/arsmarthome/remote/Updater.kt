@@ -14,8 +14,9 @@ import java.util.concurrent.Executors
 
 /**
  * Self-update without ADB: download the APK and hand it to PackageInstaller.
- * The USB install script grants "install unknown apps" once, so after that the
- * only thing needed on the remote is a tap on the system Install button.
+ * When the app is the device owner (the USB install script sets that once) the
+ * update installs by itself. Otherwise Android shows its Install prompt and the
+ * only thing needed on the remote is a tap on Install.
  */
 class Updater(private val context: Context, private val onStatus: (String) -> Unit) {
     private val worker = Executors.newSingleThreadExecutor()
@@ -96,6 +97,10 @@ class Updater(private val context: Context, private val onStatus: (String) -> Un
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         params.setAppPackageName(context.packageName)
+        // Android 12+: an app updating itself needs no prompt. (Older Android: device owner only.)
+        if (Build.VERSION.SDK_INT >= 31) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+        }
         val sessionId = installer.createSession(params)
         val session = installer.openSession(sessionId)
         try {

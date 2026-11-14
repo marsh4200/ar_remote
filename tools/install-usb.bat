@@ -46,6 +46,9 @@ type "%HERE%install.log"
 findstr /c:"Success" "%HERE%install.log" >nul && goto :installed
 findstr /c:"VERSION_DOWNGRADE" "%HERE%install.log" >nul || goto :fail
 echo The app on the remote is newer than this file - removing it, then installing this one...
+rem A device owner can't be uninstalled: have the app give that up first.
+"%ADB%" -d shell am broadcast -n %PKG%/.OwnerReceiver -a com.arsmarthome.remote.RELEASE_OWNER >nul 2>&1
+timeout /t 2 /nobreak >nul
 "%ADB%" -d uninstall %PKG%
 "%ADB%" -d install -g "%APK%" || goto :fail
 :installed
@@ -58,7 +61,7 @@ echo Switching off the remote's other apps (RosCard, old dashboards, launchers).
 "%ADB%" -d shell "rm -f /data/local/tmp/ar_disabled.txt /data/local/tmp/ar_hidden.txt; tr -d '\r' < /data/local/tmp/arfix.sh > /data/local/tmp/arfix2.sh; sh /data/local/tmp/arfix2.sh" > "%HERE%fix-report.txt"
 "%ADB%" -d shell "cat /data/local/tmp/ar_disabled.txt 2>/dev/null" >> "%HERE%disabled-apps.txt"
 "%ADB%" -d shell "cat /data/local/tmp/ar_hidden.txt 2>/dev/null" >> "%HERE%hidden-apps.txt"
-findstr /c:"switched off" /c:"hidden" /c:"COULD NOT" "%HERE%fix-report.txt"
+findstr /c:"switched off" /c:"hidden" /c:"COULD NOT" /c:"updates install" "%HERE%fix-report.txt"
 echo   (run restore-apps.bat to switch them back on)
 
 echo Making AR Remote the home screen...
@@ -80,7 +83,8 @@ echo Optional: trying to open network ADB until the next reboot...
 
 echo.
 echo Done. Add the remote in Home Assistant (AR Remote integration).
-echo Future updates: press "Install / update app" in HA and tap Install on the remote.
+echo Future updates: press "Install / update app" in HA. They install by themselves
+echo (if a line above says they could not be made automatic: tap Install on the remote).
 pause
 exit /b 0
 

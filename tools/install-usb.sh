@@ -41,6 +41,9 @@ OUT="$("$ADB" -d install -r -g "$APK" 2>&1 || true)"
 echo "$OUT"
 if echo "$OUT" | grep -q "VERSION_DOWNGRADE"; then
   echo "The app on the remote is newer than this file - removing it, then installing this one..."
+  # A device owner can't be uninstalled: have the app give that up first.
+  "$ADB" -d shell am broadcast -n "$PKG/.OwnerReceiver" -a com.arsmarthome.remote.RELEASE_OWNER >/dev/null 2>&1 || true
+  sleep 2
   "$ADB" -d uninstall "$PKG" || true
   "$ADB" -d install -g "$APK"
 elif ! echo "$OUT" | grep -q "Success"; then
@@ -56,7 +59,7 @@ echo "Switching off the remote's other apps (RosCard, old dashboards, launchers)
 "$ADB" -d shell 'cat /data/local/tmp/ar_disabled.txt 2>/dev/null' | tr -d '\r' >> "$HERE/disabled-apps.txt"
 "$ADB" -d shell 'cat /data/local/tmp/ar_hidden.txt 2>/dev/null' | tr -d '\r' >> "$HERE/hidden-apps.txt"
 [ -s "$HERE/hidden-apps.txt" ] || rm -f "$HERE/hidden-apps.txt"
-grep -E "switched off|hidden|COULD NOT" "$HERE/fix-report.txt" || echo "  nothing else to switch off"
+grep -E "switched off|hidden|COULD NOT|updates install" "$HERE/fix-report.txt" || echo "  nothing else to switch off"
 echo "  (run ./restore-apps.sh to switch them back on)"
 
 echo "Making AR Remote the home screen..."
@@ -82,4 +85,5 @@ fi
 
 echo
 echo "Done. Add the remote in Home Assistant (AR Remote integration)."
-echo "Future updates: press 'Install / update app' in HA and tap Install on the remote."
+echo "Future updates: press 'Install / update app' in HA. They install by themselves"
+echo "(if a line above says they could not be made automatic: tap Install on the remote)."

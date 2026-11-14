@@ -28,7 +28,12 @@ programmed entirely from Home Assistant.
 ### Updates — no ADB, no cable
 
 Press **Install / update app** in HA. The app downloads the new release itself
-and Android shows its install dialog on the remote — tap **Install**. (If the
+and installs it without anyone touching the remote: `tools/install-usb` makes
+AR Remote the remote's *device owner*, the only kind of app Android lets install
+silently. A remote set up before version 2.10.2 still shows Android's install
+dialog (tap **Install**) until you run `tools/install-usb` on it once more over USB.
+To uninstall the app later, run `tools/restore-apps` first: it gives device
+ownership up again. (If the
 remote ever does have network ADB on, the same button installs over ADB
 instead when the app isn't running.)
 

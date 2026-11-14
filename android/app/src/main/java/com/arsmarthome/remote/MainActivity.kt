@@ -1053,6 +1053,7 @@ class MainActivity : AndroidActivity(), Host, ConfigServer.Routes {
             .put("room", room?.id ?: "")
             .put("self_update", true)
             .put("can_install", packageManager.canRequestPackageInstalls())
+            .put("silent_update", isDeviceOwner())
             .put("default_home", defaultHome())
             .put("other_launchers", org.json.JSONArray(otherLaunchers()))
             .put("wake_sensor", waker.method)

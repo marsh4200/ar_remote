@@ -42,6 +42,16 @@ echo "  screensaver / clock off"
 dumpsys deviceidle whitelist +"$PKG" >/dev/null 2>&1
 appops set "$PKG" SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
 appops set "$PKG" REQUEST_INSTALL_PACKAGES allow >/dev/null 2>&1
+# Updates without the Install prompt: Android allows that only for the device owner.
+# One time; refused when an account is signed in on the remote or another app owns it.
+OWNER="$(dpm set-device-owner "$PKG/.AdminReceiver" 2>&1)"
+if echo "$OWNER" | grep -q -i "success"; then
+  echo "  updates install by themselves (AR Remote is now the device owner)"
+elif dumpsys device_policy 2>/dev/null | grep -A4 -i "device owner" | grep -q "$PKG"; then
+  echo "  updates install by themselves (already set)"
+else
+  echo "  COULD NOT make updates install by themselves: $(echo "$OWNER" | tail -1)"
+fi
 # Settings panel: Wi-Fi list needs location, screen timeout needs WRITE_SETTINGS.
 pm grant "$PKG" android.permission.ACCESS_FINE_LOCATION >/dev/null 2>&1
 pm grant "$PKG" android.permission.ACCESS_COARSE_LOCATION >/dev/null 2>&1

@@ -86,6 +86,9 @@ async def async_install_app(hass: HomeAssistant, host: str, port: int, apk_url: 
         pkg = APP_ACTIVITY.split("/")[0]
         await device.shell(f"pm grant {pkg} android.permission.ACCESS_FINE_LOCATION")
         await device.shell(f"appops set {pkg} WRITE_SETTINGS allow")
+        # Device owner: later updates install without the Install prompt.
+        owner = str(await device.shell(f"dpm set-device-owner {pkg}/.AdminReceiver"))
+        _LOGGER.debug("set-device-owner: %s", owner.strip())
         # Keep pick-up detection working in deep sleep (Doze).
         await device.shell(f"dumpsys deviceidle whitelist +{APP_ACTIVITY.split('/')[0]}")
         await device.shell(f"am start -n {APP_ACTIVITY}")
@@ -115,8 +118,14 @@ async def async_install_or_update(
         await client.update(apk_url)
         persistent_notification.async_create(
             hass,
-            f"The remote at {client.host} is downloading the update. Tap **Install** on its "
-            "screen when Android asks.",
+            (
+                f"The remote at {client.host} is downloading the update. It installs by itself "
+                "and the app restarts, usually within a minute."
+            ) if info.get("silent_update") else (
+                f"The remote at {client.host} is downloading the update. Tap **Install** on its "
+                "screen when Android asks. To make updates install by themselves, plug the remote "
+                "in over USB once and run tools/install-usb again."
+            ),
             title="AR Remote update",
             notification_id=f"{DOMAIN}_update_{client.host}",
         )

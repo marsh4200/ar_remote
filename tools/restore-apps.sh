@@ -13,3 +13,8 @@ if [ -f "$HERE/disabled-apps.txt" ]; then
   "$ADB" -d push "$HERE/disabled-apps.txt" /data/local/tmp/disabled-apps.txt >/dev/null
   "$ADB" -d shell 'for p in $(tr -d "\r" < /data/local/tmp/disabled-apps.txt); do pm enable $p >/dev/null 2>&1 && echo re-enabled $p; done; rm /data/local/tmp/disabled-apps.txt'
 fi
+
+# So AR Remote can be uninstalled: it gives up being the device owner (set by install-usb
+# so that updates install by themselves). Run install-usb again to set it back.
+"$ADB" -d shell am broadcast -n com.arsmarthome.remote/.OwnerReceiver -a com.arsmarthome.remote.RELEASE_OWNER >/dev/null 2>&1 \
+  && echo "AR Remote is no longer the device owner (updates will ask for a tap on Install again)"
